@@ -133,12 +133,25 @@ async function createWindow() {
   })
 }
 
+// Lazy-load translation worker to prevent crashes on startup
 const transformersWorkerPath = `file://${path.join(__dirname, 'worker', 'translation.js')}`
-const transformersWorker = new Worker(new URL(transformersWorkerPath, import.meta.url))
+let transformersWorker: Worker | null = null
 
-transformersWorker.on('message', (x) => {
-  win.webContents.send('transformers-translate-render', x)
-})
+function getTransformersWorker(): Worker {
+  if (!transformersWorker) {
+    transformersWorker = new Worker(new URL(transformersWorkerPath, import.meta.url))
+
+    transformersWorker.on('message', (x) => {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('transformers-translate-render', x)
+        // Also send to multi-language handler
+        win.webContents.send('transformers-translate-render-multi', x)
+      }
+    })
+  }
+
+  return transformersWorker
+}
 
 app.whenReady().then(() => {
   if (store.get('auto-open-web-app-on-launch')) {
@@ -285,5 +298,13 @@ ipcMain.on('delete-auto-open-web-app-on-launch', () => {
 // → Footer ('transformers-translate-render')
 
 ipcMain.on('transformers-translate', async (event, args) => {
-  transformersWorker.postMessage({ type: 'transformers-translate', data: args })
+  getTransformersWorker().postMessage({ type: 'transformers-translate', data: args })
+})
+
+ipcMain.on('transformers-translate-multi', async (event, args) => {
+  getTransformersWorker().postMessage({ type: 'transformers-translate-multi', data: args })
+})
+
+ipcMain.on('set-translation-api-key', async (event, apiKey) => {
+  getTransformersWorker().postMessage({ type: 'set-api-key', apiKey })
 })

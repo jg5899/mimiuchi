@@ -78,9 +78,29 @@
           <v-spacer v-if="!smAndDown" />
 
           <div class="d-flex justify-right">
+            <!-- Speaker Profile Switcher -->
+            <v-btn-toggle
+              v-if="route.name === 'home'"
+              v-model="speakerProfilesStore.activeProfileId"
+              class="mr-4"
+              mandatory
+              density="compact"
+              @update:model-value="switchProfile"
+            >
+              <v-btn
+                v-for="profile in speakerProfilesStore.profiles"
+                :key="profile.id"
+                :value="profile.id"
+                size="small"
+                variant="outlined"
+              >
+                {{ profile.name }}
+              </v-btn>
+            </v-btn-toggle>
+
             <v-icon-btn
-              v-if="!is_electron()" class="mr-4"
-              :active="defaultStore.speech.listening"
+              class="mr-4"
+              :active="defaultStore.speech.value?.listening || false"
               active-color="success"
               color="error"
               active-icon="mdi-microphone"
@@ -147,6 +167,9 @@ import { useSettingsStore } from '@/stores/settings'
 import { useOSCStore } from '@/stores/osc'
 import { useSpeechStore } from '@/stores/speech'
 import { useTranslationStore } from '@/stores/translation'
+import { useSpeakerProfilesStore } from '@/stores/speaker_profiles'
+import { useMultiTranslationStore } from '@/stores/multi_translation'
+import { translationQueue } from '@/helpers/translation_queue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -164,6 +187,8 @@ const oscStore = useOSCStore()
 const settingsStore = useSettingsStore()
 const speechStore = useSpeechStore()
 const translationStore = useTranslationStore()
+const speakerProfilesStore = useSpeakerProfilesStore()
+const multiTranslationStore = useMultiTranslationStore()
 
 const input_text = ref('')
 const input_index = ref<any>(null)
@@ -192,9 +217,9 @@ const { stt } = storeToRefs(speechStore)
 watch(
   () => stt.value.language,
   (new_val) => {
-    if (defaultStore.speech.recognition) {
-      defaultStore.speech.stop()
-      defaultStore.speech.recognition.lang = new_val
+    if (defaultStore.speech.value?.recognition) {
+      defaultStore.speech.value.stop()
+      defaultStore.speech.value.recognition.lang = new_val
     }
   },
   { deep: true },
@@ -240,10 +265,13 @@ onMounted(() => {
   }
 
   speechStore.initialize_speech(speechStore.stt.language)
+
+  // Initialize translation queue
+  translationQueue.initialize(translationStore, multiTranslationStore)
 })
 
 onUnmounted(() => {
-  if (defaultStore.speech.listening)
+  if (defaultStore.speech.value?.listening)
     toggleListen()
 
   if (defaultStore.broadcasting)
@@ -267,6 +295,30 @@ onUpdated(() => {
   reloadEvents()
   last_route.value = router.options.history.state.back
 })
+
+function switchProfile(profileId: string) {
+  speakerProfilesStore.setActiveProfile(profileId)
+  const profile = speakerProfilesStore.getActiveProfile()
+
+  // Update speech recognition settings based on the active profile
+  speechStore.stt.language = profile.language
+  speechStore.stt.confidence = profile.confidence
+  speechStore.stt.sensitivity = profile.sensitivity
+
+  // Restart speech recognition if it's currently listening
+  if (defaultStore.speech.value?.listening) {
+    defaultStore.speech.value.stop()
+    defaultStore.speech.value.recognition.lang = profile.language
+    setTimeout(() => {
+      defaultStore.speech.value.start()
+    }, 100)
+  } else {
+    // Just update the language without restarting
+    if (defaultStore.speech.value?.recognition) {
+      defaultStore.speech.value.recognition.lang = profile.language
+    }
+  }
+}
 
 function toggleListen() {
   speechStore.toggle_listen()

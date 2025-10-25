@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
@@ -5,6 +6,13 @@ import { defineConfig } from 'vite'
 import electron from 'vite-plugin-electron/simple'
 import vuetify from 'vite-plugin-vuetify'
 import pkg from './package.json' with { type: 'json' }
+
+// Polyfill for crypto.hash if not available
+if (!crypto.hash) {
+  crypto.hash = function (algorithm: string, data: any, outputEncoding?: any) {
+    return crypto.createHash(algorithm).update(data).digest(outputEncoding || 'hex')
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {

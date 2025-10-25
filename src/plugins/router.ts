@@ -1,5 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
@@ -12,9 +12,12 @@ import TTS from '@/pages/settings/TTS.vue'
 import Appearance from '@/pages/settings/Appearance.vue'
 import WordReplace from '@/pages/settings/WordReplace.vue'
 import Translation from '@/pages/settings/Translation.vue'
+import SpeakerProfiles from '@/pages/settings/SpeakerProfiles.vue'
+import MultiLanguage from '@/pages/settings/MultiLanguage.vue'
 import Connections from '@/components/settings/connections/Connections.vue'
 import OSC from '@/pages/settings/OSC.vue'
 import OSCTriggers from '@/components/settings/osctriggers/OSCTriggers.vue'
+import LanguageStream from '@/pages/LanguageStream.vue'
 
 const routes = [
   {
@@ -25,6 +28,11 @@ const routes = [
       // Header,
       Footer,
     },
+  },
+  {
+    path: '/:lang(spanish|ukrainian|russian|portuguese|french|korean|mandarin|tagalog|vietnamese|arabic|hindi|polish)',
+    name: 'language-stream',
+    component: LanguageStream,
   },
   {
     path: '/settings/',
@@ -56,6 +64,11 @@ const routes = [
         component: TTS,
       },
       {
+        path: 'speaker-profiles',
+        name: 'speaker-profiles',
+        component: SpeakerProfiles,
+      },
+      {
         path: 'wordreplace',
         name: 'wordreplace',
         component: WordReplace,
@@ -64,6 +77,11 @@ const routes = [
         path: 'translation',
         name: 'translation',
         component: Translation,
+      },
+      {
+        path: 'multi-language',
+        name: 'multi-language',
+        component: MultiLanguage,
       },
       {
         path: 'connections',
@@ -85,6 +103,6 @@ const routes = [
 ]
 
 export default createRouter({
-  history: createWebHistory('./'),
+  history: createWebHashHistory(),
   routes: routes as RouteRecordRaw[],
 })

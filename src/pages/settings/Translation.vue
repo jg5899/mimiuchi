@@ -39,11 +39,26 @@
             <template #item="{ props }">
               <v-list-item v-bind="props">
                 <template #append>
-                  <v-icon icon="mdi-laptop" />
+                  <v-icon icon="mdi-cloud" />
                 </template>
               </v-list-item>
             </template>
           </v-select>
+        </v-col>
+        <v-col v-if="translationStore.type === 'OpenAI'" :cols="12">
+          <v-text-field
+            v-model="translationStore.openai_api_key"
+            label="OpenAI API Key"
+            placeholder="sk-..."
+            variant="outlined"
+            type="password"
+            hint="Same API key used for Whisper STT"
+            persistent-hint
+          >
+            <template #prepend-inner>
+              <v-icon icon="mdi-key" />
+            </template>
+          </v-text-field>
         </v-col>
         <v-col v-if="translation_types.find(o => o.type === 'local')" :cols="12">
           <v-alert variant="outlined" type="info" prominent>
@@ -112,9 +127,9 @@ const stt_language = speechStore.stt.language
 
 const translation_types = ref([
   {
-    title: 'Transformers.js (BETA)',
-    value: 'Transformers.js',
-    type: 'local',
+    title: 'OpenAI GPT-4o-mini (Cloud)',
+    value: 'OpenAI',
+    type: 'cloud',
   },
 ])
 </script>

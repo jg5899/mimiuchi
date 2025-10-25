@@ -3,6 +3,25 @@
     id="log-list" v-resize="onResize" class="fill-height pa-4 overflow-auto log-list"
     :color="appearanceStore.ui.color" :height="height - (appearanceStore.footer_size ? 200 : 55)" tile
   >
+    <!-- Language Selector - Only show when translation is enabled -->
+    <v-row v-if="translationStore.enabled && is_electron()" class="mb-4">
+      <v-col cols="12">
+        <v-select
+          v-model="translationStore.target"
+          :items="availableLanguages"
+          label="Translation Language"
+          variant="outlined"
+          density="compact"
+          hide-details
+          @update:model-value="onLanguageChange"
+        >
+          <template #prepend-inner>
+            <v-icon>mdi-translate</v-icon>
+          </template>
+        </v-select>
+      </v-col>
+    </v-row>
+
     <div>
       <a
         v-for="(log, index) in logsStore.logs"
@@ -10,7 +29,7 @@
         :class="{ 'fade-out': log.hide, 'final-text': log.isFinal || log.isTranslationFinal, 'interim-text': !log.isFinal || (!log.isTranslationFinal && log.translate) }"
       >
         <a v-if="log.hide !== 2">
-          {{ (translationStore.enabled && (log.translation || !translationStore.show_original)) ? log.translation : log.transcript }}&nbsp;&nbsp;
+          {{ (translationStore.enabled && log.translation) ? (translationStore.show_original ? `${log.transcript} (${log.translation})` : log.translation) : log.transcript }}&nbsp;&nbsp;
         </a>
         <v-expand-transition v-show="log.pause">
           <div>
@@ -47,6 +66,27 @@ const settingsStore = useSettingsStore()
 const appearanceStore = useAppearanceStore()
 const logsStore = useLogsStore()
 const translationStore = useTranslationStore()
+
+// Available translation languages
+const availableLanguages = ref([
+  { title: 'Spanish (Español)', value: 'spa_Latn' },
+  { title: 'Ukrainian (Українська)', value: 'ukr_Cyrl' },
+  { title: 'Russian (Русский)', value: 'rus_Cyrl' },
+  { title: 'Portuguese (Português)', value: 'por_Latn' },
+  { title: 'French (Français)', value: 'fra_Latn' },
+  { title: 'Korean (한국어)', value: 'kor_Hang' },
+  { title: 'Mandarin (中文)', value: 'zho_Hans' },
+  { title: 'Tagalog', value: 'tgl_Latn' },
+  { title: 'Vietnamese (Tiếng Việt)', value: 'vie_Latn' },
+  { title: 'Arabic (العربية)', value: 'arb_Arab' },
+  { title: 'Hindi (हिन्दी)', value: 'hin_Deva' },
+  { title: 'Polish (Polski)', value: 'pol_Latn' },
+])
+
+function onLanguageChange(newLang: string) {
+  console.log('Translation language changed to:', newLang)
+  // The translation will automatically update via the store reactivity
+}
 
 const font_size = `${appearanceStore.text.font_size}px`
 const fade_time = `${appearanceStore.text.fade_time}s`

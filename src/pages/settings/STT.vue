@@ -11,7 +11,67 @@
             item-title="title"
             item-value="value"
             variant="outlined"
+            return-object
           />
+        </v-col>
+      </v-row>
+
+      <v-row v-if="speechStore.stt.type.value === 'whisper'">
+        <v-col :cols="12">
+          <v-text-field
+            v-model="speechStore.stt.whisperApiKey"
+            label="OpenAI API Key"
+            type="password"
+            variant="outlined"
+            hint="Get your API key from platform.openai.com/api-keys"
+            persistent-hint
+          />
+        </v-col>
+        <v-col :cols="12">
+          <v-switch
+            v-model="speechStore.stt.whisperUseGPT4oPostProcessing"
+            label="Enable GPT-4o Post-Processing"
+            color="primary"
+            hide-details
+          />
+          <p class="text-caption mt-2 ml-2">
+            Refine transcripts with GPT-4o for better grammar, punctuation, and biblical term accuracy.
+            Adds ~$0.02-0.04 per minute.
+          </p>
+        </v-col>
+        <v-col :cols="12">
+          <v-alert type="info" variant="tonal" density="compact">
+            <div class="text-caption">
+              <strong>Whisper API Pricing:</strong> ~$0.006 per minute of audio (~$0.36/hour)<br>
+              <strong>GPT-4o Post-Processing:</strong> ~$0.02-0.04 per minute (optional, toggle above)<br>
+              <strong>Supported Languages:</strong> 99 languages including English, Spanish, Ukrainian, Russian<br>
+              <strong>Note:</strong> Audio is processed in 3-second chunks for readable real-time transcription
+            </div>
+          </v-alert>
+        </v-col>
+      </v-row>
+
+      <v-row v-if="speechStore.stt.type.value === 'deepgram'">
+        <v-col :cols="12">
+          <v-text-field
+            v-model="speechStore.stt.deepgramApiKey"
+            label="Deepgram API Key"
+            type="password"
+            variant="outlined"
+            hint="Get your API key from console.deepgram.com"
+            persistent-hint
+          />
+        </v-col>
+        <v-col :cols="12">
+          <v-alert type="success" variant="tonal" density="compact">
+            <div class="text-caption">
+              <strong>✓ Recommended for Church Services</strong><br><br>
+              <strong>Deepgram Nova-2 Pricing:</strong> ~$0.0043 per minute of audio (~$0.26/hour)<br>
+              <strong>Features:</strong> True real-time streaming, handles music/singing, speaker diarization, custom keyword boost<br>
+              <strong>Supported Languages:</strong> 30+ languages including English, Spanish, Ukrainian, Russian<br>
+              <strong>How it works:</strong> Real-time WebSocket streaming - no chunking delays!
+            </div>
+          </v-alert>
         </v-col>
       </v-row>
 
@@ -149,8 +209,16 @@ const languages = WebSpeechLangs
 
 const stt_options = ref([
   {
-    title: 'Web Speech API',
+    title: 'Web Speech API (Free, built-in)',
     value: 'webspeech',
+  },
+  {
+    title: 'OpenAI Whisper API (Good accuracy with GPT-4o refinement)',
+    value: 'whisper',
+  },
+  {
+    title: 'Deepgram Nova-2 (Best for real-time church audio, recommended)',
+    value: 'deepgram',
   },
 ])
 
@@ -170,6 +238,29 @@ const filtered_lang = computed(() => {
 watch(language_choice, (new_val) => {
   if (new_val)
     speechStore.stt.language = new_val
+})
+
+// Reinitialize speech when STT type or API key changes
+watch(() => speechStore.stt.type, () => {
+  speechStore.initialize_speech(speechStore.stt.language)
+})
+
+watch(() => speechStore.stt.whisperApiKey, () => {
+  if (speechStore.stt.type.value === 'whisper') {
+    speechStore.initialize_speech(speechStore.stt.language)
+  }
+})
+
+watch(() => speechStore.stt.whisperUseGPT4oPostProcessing, () => {
+  if (speechStore.stt.type.value === 'whisper') {
+    speechStore.initialize_speech(speechStore.stt.language)
+  }
+})
+
+watch(() => speechStore.stt.deepgramApiKey, () => {
+  if (speechStore.stt.type.value === 'deepgram') {
+    speechStore.initialize_speech(speechStore.stt.language)
+  }
 })
 
 onUnmounted(() => {

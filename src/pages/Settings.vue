@@ -161,13 +161,18 @@ const settings_general = computed(() => {
       title: t('settings.stt.title'),
       value: 'stt',
       icon: 'mdi-microphone-outline',
-      unavailable_condition: is_electron(),
+      unavailable_condition: false,
       unavailable_tooltip: STTUnavailable,
     },
     {
       title: t('settings.tts.title'),
       value: 'tts',
       icon: 'mdi-account-voice',
+    },
+    {
+      title: 'Speaker Profiles',
+      value: 'speaker-profiles',
+      icon: 'mdi-account-multiple',
     },
     {
       title: t('settings.word_replace.title'),
@@ -180,6 +185,11 @@ const settings_general = computed(() => {
       icon: 'mdi-translate',
       unavailable_condition: !is_electron(),
       unavailable_tooltip: TranslationUnavailable,
+    },
+    {
+      title: 'Multi-Language Streams',
+      value: 'multi-language',
+      icon: 'mdi-google-translate',
     },
   ]
 })
