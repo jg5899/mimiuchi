@@ -16,13 +16,51 @@ class TranslationQueue {
   private isProcessing = false
   private translationStore: any = null
   private multiTranslationStore: any = null
+  private ws: WebSocket | null = null
 
   constructor() {
     if (is_electron()) {
-      // Set up listener for translation results
+      // Set up listener for translation results from Electron IPC
       window.ipcRenderer?.on('transformers-translate-render-multi', (event: any, data: any) => {
         this.handleTranslationResult(data)
       })
+    } else {
+      // Set up WebSocket listener for translation results in browser mode
+      this.connectWebSocket()
+    }
+  }
+
+  private connectWebSocket() {
+    // Connect to the mimiuchi WebSocket server (port 7714)
+    const wsUrl = `ws://${window.location.hostname}:7714`
+    console.log('[TranslationQueue] Connecting to WebSocket:', wsUrl)
+
+    this.ws = new WebSocket(wsUrl)
+
+    this.ws.onopen = () => {
+      console.log('[TranslationQueue] WebSocket connected')
+    }
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        console.log('[TranslationQueue] WebSocket message received:', message)
+
+        if (message.type === 'translation') {
+          this.handleTranslationResult(message.data)
+        }
+      } catch (error) {
+        console.error('[TranslationQueue] Error parsing WebSocket message:', error)
+      }
+    }
+
+    this.ws.onerror = (error) => {
+      console.error('[TranslationQueue] WebSocket error:', error)
+    }
+
+    this.ws.onclose = () => {
+      console.log('[TranslationQueue] WebSocket closed, reconnecting in 3s...')
+      setTimeout(() => this.connectWebSocket(), 3000)
     }
   }
 

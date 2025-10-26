@@ -147,6 +147,20 @@ function getTransformersWorker(): Worker {
         // Also send to multi-language handler
         win.webContents.send('transformers-translate-render-multi', x)
       }
+
+      // Broadcast translations to WebSocket clients
+      if (wsserver && x.status === 'complete') {
+        const message = JSON.stringify({
+          type: 'translation',
+          data: x
+        })
+
+        wsserver.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(message)
+          }
+        })
+      }
     })
   }
 
