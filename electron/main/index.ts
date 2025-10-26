@@ -190,14 +190,26 @@ ipcMain.handle('open-win', (_, arg) => {
     webPreferences: {
       preload,
       nodeIntegration: true,
-      contextIsolation: false,
+      contextIsolation: true,
     },
   })
 
-  if (VITE_DEV_SERVER_URL)
-    childWindow.loadURL(`${VITE_DEV_SERVER_URL}#${arg}`)
-  else
+  if (VITE_DEV_SERVER_URL) {
+    // Load the base URL first
+    childWindow.loadURL(VITE_DEV_SERVER_URL)
+
+    // Wait for DOM to be fully ready before setting hash
+    childWindow.webContents.once('dom-ready', () => {
+      console.log('[Electron] DOM ready, setting hash to:', arg)
+      childWindow.webContents.executeJavaScript(`
+        console.log('[Child Window] Setting hash to:', '${arg}');
+        window.location.hash = '${arg}';
+      `)
+    })
+  }
+  else {
     childWindow.loadFile(indexHtml, { hash: arg })
+  }
 })
 
 /*

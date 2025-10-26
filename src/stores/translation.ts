@@ -24,17 +24,23 @@ export const useTranslationStore = defineStore('translation', () => {
         download.value = -1
         break
       case 'update':
-        logsStore.logs[data.index].translation = data.output
-        logsStore.loading_result = true
+        // Safety check: ensure log exists before setting translation
+        if (logsStore.logs[data.index]) {
+          logsStore.logs[data.index].translation = data.output
+          logsStore.loading_result = true
+        }
         break
       case 'complete': {
         const { on_submit } = useSpeechStore()
 
-        logsStore.logs[data.index].translation = data.output[0].translation_text
-        logsStore.loading_result = false
-        logsStore.logs[data.index].isTranslationFinal = true
+        // Safety check: ensure log exists before setting translation
+        if (logsStore.logs[data.index]) {
+          logsStore.logs[data.index].translation = data.output[0].translation_text
+          logsStore.loading_result = false
+          logsStore.logs[data.index].isTranslationFinal = true
 
-        on_submit(logsStore.logs[data.index], data.index)
+          on_submit(logsStore.logs[data.index], data.index)
+        }
         break
       }
       case 'error':

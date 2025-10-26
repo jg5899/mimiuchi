@@ -159,19 +159,31 @@ function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text)
 }
 
-function openStream(route: string) {
-  window.open(route, '_blank')
+async function openStream(route: string) {
+  console.log('Opening stream with route:', route)
+  // Use Electron IPC to open new window instead of window.open (which is blocked)
+  if (window.ipcRenderer) {
+    // Remove leading slash for the route
+    const cleanRoute = route.startsWith('/') ? route.substring(1) : route
+    console.log('Clean route:', cleanRoute)
+    await window.ipcRenderer.invoke('open-win', '/' + cleanRoute)
+  } else {
+    // Fallback for web version
+    const url = `${window.location.origin}/#${route}`
+    window.open(url, '_blank')
+  }
 }
 
 function openAllStreams() {
+  console.log('Opening all enabled streams:', multiTranslationStore.enabledStreams)
   multiTranslationStore.enabledStreams.forEach((stream) => {
     openStream(stream.route)
   })
 }
 
-function clearLogs() {
+async function clearLogs() {
   if (confirm('Are you sure you want to clear all translation logs?')) {
-    multiTranslationStore.clearLogs()
+    await multiTranslationStore.clearLogs()
   }
 }
 </script>

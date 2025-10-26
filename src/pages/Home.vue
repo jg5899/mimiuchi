@@ -3,25 +3,6 @@
     id="log-list" v-resize="onResize" class="fill-height pa-4 overflow-auto log-list"
     :color="appearanceStore.ui.color" :height="height - (appearanceStore.footer_size ? 200 : 55)" tile
   >
-    <!-- Language Selector - Only show when translation is enabled -->
-    <v-row v-if="translationStore.enabled && is_electron()" class="mb-4">
-      <v-col cols="12">
-        <v-select
-          v-model="translationStore.target"
-          :items="availableLanguages"
-          label="Translation Language"
-          variant="outlined"
-          density="compact"
-          hide-details
-          @update:model-value="onLanguageChange"
-        >
-          <template #prepend-inner>
-            <v-icon>mdi-translate</v-icon>
-          </template>
-        </v-select>
-      </v-col>
-    </v-row>
-
     <div>
       <a
         v-for="(log, index) in logsStore.logs"
@@ -29,7 +10,7 @@
         :class="{ 'fade-out': log.hide, 'final-text': log.isFinal || log.isTranslationFinal, 'interim-text': !log.isFinal || (!log.isTranslationFinal && log.translate) }"
       >
         <a v-if="log.hide !== 2">
-          {{ (translationStore.enabled && log.translation) ? (translationStore.show_original ? `${log.transcript} (${log.translation})` : log.translation) : log.transcript }}&nbsp;&nbsp;
+          {{ log.transcript }}&nbsp;&nbsp;
         </a>
         <v-expand-transition v-show="log.pause">
           <div>

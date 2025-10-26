@@ -410,18 +410,29 @@ export const useSpeechStore = defineStore('speech', () => {
 
       // Add to multi-translation system
       const logIndex = multiTranslationStore.addTranslationLog(log.transcript, true)
+      console.log('[Speech] Added to multiLogs, logIndex:', logIndex)
 
       // translate if not translating and enabled
+      console.log('[Speech] Translation check:', {
+        isElectron: is_electron(),
+        enabled: translationStore.enabled,
+        translate: log.translate,
+        translation: log.translation
+      })
       if (is_electron() && translationStore.enabled && !log.translate && !log.translation) {
+        console.log('[Speech] Translation enabled, starting...')
         logsStore.logs[i].translate = true
 
         // Send API key to worker if it's set
         if (translationStore.openai_api_key) {
+          console.log('[Speech] Sending API key to worker')
           window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
         }
 
         // Queue translations for all enabled languages
+        console.log('[Speech] Enabled streams:', multiTranslationStore.enabledStreams.length)
         if (multiTranslationStore.enabledStreams.length > 0) {
+          console.log('[Speech] Queueing multi-language tasks for logIndex:', logIndex)
           translationQueue.addMultiLanguageTasks(
             log.transcript,
             translationStore.source,
@@ -430,6 +441,7 @@ export const useSpeechStore = defineStore('speech', () => {
         }
 
         // Also do the standard single translation for backward compatibility
+        console.log('[Speech] Sending standard translation request')
         window.ipcRenderer.send('transformers-translate', {
           text: log.transcript,
           src_lang: translationStore.source,

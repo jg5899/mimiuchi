@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export interface LanguageStream {
   id: string
@@ -158,8 +158,41 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
   }
 
   // Clear logs
-  function clearLogs() {
+  async function clearLogs() {
     multiLogs.value = []
+    // Also clear the regular logs store
+    const { useLogsStore } = await import('@/stores/logs')
+    const logsStore = useLogsStore()
+    logsStore.logs = []
+  }
+
+  // Sync multiLogs across windows using BroadcastChannel
+  let skipNextUpdate = false
+  let bc: BroadcastChannel | null = null
+
+  if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+    bc = new BroadcastChannel('multiLogs')
+    console.log('[MultiTranslation] BroadcastChannel created')
+
+    // Watch for changes and broadcast to other windows
+    watch(multiLogs, (newLogs) => {
+      if (!skipNextUpdate && bc) {
+        console.log('[MultiTranslation] Broadcasting to other windows, logs count:', newLogs.length)
+        // Convert Vue Proxy to plain object for cloning
+        const plainLogs = JSON.parse(JSON.stringify(newLogs))
+        bc.postMessage({ type: 'update', logs: plainLogs })
+      }
+      skipNextUpdate = false
+    }, { deep: true })
+
+    // Listen for updates from other windows
+    bc.onmessage = (event) => {
+      if (event.data.type === 'update') {
+        console.log('[MultiTranslation] Received broadcast, logs count:', event.data.logs.length)
+        skipNextUpdate = true
+        multiLogs.value = event.data.logs
+      }
+    }
   }
 
   return {

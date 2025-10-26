@@ -39,11 +39,16 @@ class TranslationQueue {
   }
 
   addMultiLanguageTasks(text: string, srcLang: string, logIndex: number) {
-    if (!this.multiTranslationStore)
+    console.log('[TranslationQueue] addMultiLanguageTasks called:', { text, srcLang, logIndex })
+    if (!this.multiTranslationStore) {
+      console.log('[TranslationQueue] No multiTranslationStore!')
       return
+    }
 
     const enabledLangs = this.multiTranslationStore.enabledTargetLangs
+    console.log('[TranslationQueue] Enabled languages:', enabledLangs)
     enabledLangs.forEach((tgtLang: string) => {
+      console.log('[TranslationQueue] Adding task for language:', tgtLang)
       this.addTask(text, srcLang, tgtLang, logIndex)
     })
   }
@@ -82,9 +87,12 @@ class TranslationQueue {
   }
 
   private handleTranslationResult(data: any) {
+    console.log('[TranslationQueue] Received translation result:', data)
     if (data.status === 'complete' && this.multiTranslationStore) {
       const translation = data.output[0].translation_text
+      console.log('[TranslationQueue] Updating translation:', { index: data.index, lang: data.tgt_lang, translation })
       this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, translation)
+      console.log('[TranslationQueue] MultiLogs after update:', this.multiTranslationStore.multiLogs)
     }
   }
 

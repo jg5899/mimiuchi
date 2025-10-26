@@ -1,6 +1,6 @@
 <template>
   <v-card
-    id="language-stream" class="fill-height pa-4 overflow-auto language-stream"
+    id="language-stream" ref="streamContentRef" class="fill-height pa-4 overflow-auto language-stream"
     :color="appearanceStore.ui.color" tile
   >
     <div class="stream-header mb-4">
@@ -19,62 +19,40 @@
         :class="{ 'final-text': log.isFinal, 'interim-text': !log.isFinal }"
         class="stream-log"
       >
-        {{ log.translation || log.transcript }}&nbsp;&nbsp;
+        {{ log.translation }}&nbsp;&nbsp;
       </div>
 
-      <div class="text-center text-disabled mt-8">
+      <div v-if="displayLogs.length === 0" class="text-center text-disabled mt-8">
         <v-icon size="64" class="mb-4">
           mdi-translate
         </v-icon>
-        <p v-if="displayLogs.length === 0">Waiting for transcriptions...</p>
-        <p v-else>{{ displayLogs.length }} logs found</p>
+        <p>Waiting for translations...</p>
         <p class="text-caption">
           Start speaking in the main app
         </p>
-        <p class="text-caption mt-4 text-info">
-          Debug Info:
-        </p>
-        <p class="text-caption">
-          Language ID: {{ languageId }}
-        </p>
-        <p class="text-caption">
-          Language Name: {{ languageName }}
-        </p>
-        <p class="text-caption">
-          Target Lang: {{ targetLang }}
-        </p>
-        <p class="text-caption">
-          MultiLogs count: {{ multiTranslationStore.multiLogs.length }}
-        </p>
-        <p class="text-caption">
-          Regular logs count: {{ logsStore.logs.length }}
-        </p>
-        <p class="text-caption">
-          Display logs count: {{ displayLogs.length }}
-        </p>
-      </div>
-
-      <div v-if="displayLogs.length > 0 && !displayLogs[0].translation" class="text-center text-warning mt-2 mb-4">
-        <v-chip color="info" size="small" variant="outlined">
-          <v-icon start size="small">mdi-information</v-icon>
-          Showing {{ languageName }} original text (translation in progress...)
-        </v-chip>
       </div>
     </div>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
 import { useLogsStore } from '@/stores/logs'
 
+console.log('[LanguageStream] COMPONENT IS LOADING!!!')
+
 const route = useRoute()
+console.log('[LanguageStream] Route params:', route.params)
+console.log('[LanguageStream] Route path:', route.path)
+
 const appearanceStore = useAppearanceStore()
 const multiTranslationStore = useMultiTranslationStore()
 const logsStore = useLogsStore()
+
+const streamContentRef = ref<HTMLElement | null>(null)
 
 const languageId = computed(() => route.params.lang as string)
 
@@ -98,22 +76,33 @@ const displayLogs = computed(() => {
 
   console.log('DisplayLogs computed, targetLang:', targetLang.value)
   console.log('MultiLogs length:', multiTranslationStore.multiLogs.length)
-  console.log('Regular logs length:', logsStore.logs.length)
 
   // If we have multiLogs, use them (proper multi-language system)
   if (multiTranslationStore.multiLogs.length > 0) {
-    return multiTranslationStore.getLogsForLanguage(targetLang.value)
+    const logs = multiTranslationStore.getLogsForLanguage(targetLang.value)
+    console.log('Logs from getLogsForLanguage:', logs)
+    // Only show logs that have a translation (filter out untranslated text)
+    const filtered = logs.filter(log => log.translation && log.translation.trim() !== '')
+    console.log('Filtered logs with translations:', filtered)
+    return filtered
   }
 
-  // Fallback: show regular logs with translation (for backward compatibility)
-  // This happens if translation was enabled on Home page before opening streams
-  return logsStore.logs.map(log => ({
-    transcript: log.transcript,
-    translation: log.translation || '',
-    isFinal: log.isFinal,
-    time: log.time,
-  }))
+  // Fallback: if no multiLogs, show nothing (don't fall back to regular logs)
+  console.log('No multiLogs available')
+  return []
 })
+
+// Auto-scroll to bottom when new logs appear
+watch(displayLogs, async () => {
+  await nextTick()
+  if (streamContentRef.value?.$el) {
+    const element = streamContentRef.value.$el
+    element.scrollTo({
+      top: element.scrollHeight,
+      behavior: 'smooth'
+    })
+  }
+}, { deep: true })
 
 // No need to sync - translations are automatically populated by the translation_queue system
 // which listens to 'transformers-translate-render-multi' events and updates multiLogs
@@ -134,7 +123,7 @@ const displayLogs = computed(() => {
 .stream-content {
   flex: 1;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
 }
 
 .stream-log {

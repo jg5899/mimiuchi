@@ -47,7 +47,16 @@ parentPort?.on('message', async (message) => {
           messages: [
             {
               role: 'system',
-              content: `You are a professional translator. Translate the following text from ${sourceLang} to ${targetLang}. Preserve religious terms, proper nouns, and maintain the reverent tone appropriate for church services. Return ONLY the translated text, nothing else.`,
+              content: `You are a professional translator specialized in Christian church services. Translate from ${sourceLang} to ${targetLang}.
+
+Important guidelines:
+- Preserve biblical terminology and scripture references accurately
+- Maintain theological precision for doctrinal terms
+- Use reverent, formal tone appropriate for worship services
+- Keep proper nouns unchanged (names, places)
+- Translate liturgical language appropriately (prayers, blessings, creeds)
+
+Return ONLY the translated text, nothing else.`,
             },
             {
               role: 'user',
