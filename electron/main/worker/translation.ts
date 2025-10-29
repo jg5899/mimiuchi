@@ -86,6 +86,7 @@ Return ONLY the translated text, nothing else.`,
         output: [{ translation_text: translation }],
         index: message.data.index,
         tgt_lang: message.data.tgt_lang,
+        original_text: message.data.text, // Include original for browser clients
       })
     } catch (error: any) {
       console.error('Translation error:', error)

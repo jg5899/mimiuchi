@@ -110,6 +110,10 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
   // Multi-language translation logs
   const multiLogs = ref<TranslationLog[]>([])
 
+  // Throttle mechanism to slow down translation updates for better readability
+  const updateThrottleTime = 400 // milliseconds between updates per log entry
+  const lastUpdateTimes = new Map<string, number>()
+
   // Get enabled language streams
   const enabledStreams = computed(() => {
     return languageStreams.value.filter(stream => stream.enabled)
@@ -133,7 +137,33 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
   }
 
   // Update translation for a specific language in a log
-  function updateTranslation(logIndex: number, langCode: string, translation: string) {
+  function updateTranslation(logIndex: number, langCode: string, translation: string, originalText?: string) {
+    // Create log entry immediately if it doesn't exist (for WebSocket browser clients)
+    // This ensures transcripts appear in real-time, without throttling
+    if (!multiLogs.value[logIndex] && originalText) {
+      multiLogs.value[logIndex] = {
+        transcript: originalText,
+        translations: {},
+        isFinal: true,
+        time: new Date(),
+      }
+    }
+
+    // Throttle only the translation updates, not the transcript creation
+    // This keeps main transcription fast while slowing down translations for readability
+    const throttleKey = `${logIndex}-${langCode}`
+    const now = Date.now()
+    const lastUpdate = lastUpdateTimes.get(throttleKey) || 0
+
+    // Only update if enough time has passed since last update for this specific log+language
+    if (now - lastUpdate < updateThrottleTime) {
+      return // Skip this update to slow down the rate
+    }
+
+    // Update the last update time
+    lastUpdateTimes.set(throttleKey, now)
+
+    // Update the translation (this is throttled)
     if (multiLogs.value[logIndex]) {
       multiLogs.value[logIndex].translations[langCode] = translation
     }
@@ -141,12 +171,14 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
 
   // Get logs for a specific language
   function getLogsForLanguage(langCode: string) {
-    return multiLogs.value.map(log => ({
-      transcript: log.transcript,
-      translation: log.translations[langCode] || '',
-      isFinal: log.isFinal,
-      time: log.time,
-    }))
+    return multiLogs.value
+      .filter(log => log != null)
+      .map(log => ({
+        transcript: log.transcript,
+        translation: log.translations[langCode] || '',
+        isFinal: log.isFinal,
+        time: log.time,
+      }))
   }
 
   // Toggle language stream

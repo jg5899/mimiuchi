@@ -149,17 +149,26 @@ function getTransformersWorker(): Worker {
       }
 
       // Broadcast translations to WebSocket clients
+      console.log('[Main] Translation worker message received:', { status: x.status, wsserver: !!wsserver })
       if (wsserver && x.status === 'complete') {
+        const clientCount = wsserver.clients.size
+        console.log('[Main] Broadcasting to', clientCount, 'WebSocket clients')
+
         const message = JSON.stringify({
           type: 'translation',
           data: x
         })
 
+        let sentCount = 0
         wsserver.clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(message)
+            sentCount++
           }
         })
+        console.log('[Main] Sent translation to', sentCount, 'clients')
+      } else if (!wsserver) {
+        console.log('[Main] wsserver is null, not broadcasting')
       }
     })
   }
@@ -265,7 +274,7 @@ ipcMain.on('send-osc-message', (event, args) => {
 let wsserver: WebSocketServer = null
 // websocket events
 ipcMain.on('start-mimiuchi-websocketserver', (event, args) => {
-  wsserver = new WebSocketServer({ port: args })
+  wsserver = new WebSocketServer({ port: args, host: '0.0.0.0' })
 
   initialize_wsserver(win, wsserver)
     .then(() => {

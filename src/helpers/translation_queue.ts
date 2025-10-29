@@ -11,6 +11,9 @@ interface TranslationTask {
   logIndex: number
 }
 
+// Module-level WebSocket storage to persist across HMR updates
+let globalWebSocket: WebSocket | null = null
+
 class TranslationQueue {
   private queue: TranslationTask[] = []
   private isProcessing = false
@@ -31,11 +34,33 @@ class TranslationQueue {
   }
 
   private connectWebSocket() {
+    // Reuse existing WebSocket connection if it's still open (prevents HMR from creating duplicates)
+    if (globalWebSocket && globalWebSocket.readyState === WebSocket.OPEN) {
+      console.log('[TranslationQueue] Reusing existing WebSocket connection')
+      this.ws = globalWebSocket
+
+      // Re-attach message handler to the new instance
+      this.ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data)
+          console.log('[TranslationQueue] WebSocket message received:', message)
+
+          if (message.type === 'translation') {
+            this.handleTranslationResult(message.data)
+          }
+        } catch (error) {
+          console.error('[TranslationQueue] Error parsing WebSocket message:', error)
+        }
+      }
+      return
+    }
+
     // Connect to the mimiuchi WebSocket server (port 7714)
     const wsUrl = `ws://${window.location.hostname}:7714`
-    console.log('[TranslationQueue] Connecting to WebSocket:', wsUrl)
+    console.log('[TranslationQueue] Creating new WebSocket connection:', wsUrl)
 
     this.ws = new WebSocket(wsUrl)
+    globalWebSocket = this.ws
 
     this.ws.onopen = () => {
       console.log('[TranslationQueue] WebSocket connected')
@@ -60,6 +85,7 @@ class TranslationQueue {
 
     this.ws.onclose = () => {
       console.log('[TranslationQueue] WebSocket closed, reconnecting in 3s...')
+      globalWebSocket = null
       setTimeout(() => this.connectWebSocket(), 3000)
     }
   }
@@ -128,8 +154,8 @@ class TranslationQueue {
     console.log('[TranslationQueue] Received translation result:', data)
     if (data.status === 'complete' && this.multiTranslationStore) {
       const translation = data.output[0].translation_text
-      console.log('[TranslationQueue] Updating translation:', { index: data.index, lang: data.tgt_lang, translation })
-      this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, translation)
+      console.log('[TranslationQueue] Updating translation:', { index: data.index, lang: data.tgt_lang, translation, originalText: data.original_text })
+      this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, translation, data.original_text)
       console.log('[TranslationQueue] MultiLogs after update:', this.multiTranslationStore.multiLogs)
     }
   }
@@ -142,3 +168,19 @@ class TranslationQueue {
 
 // Export singleton instance
 export const translationQueue = new TranslationQueue()
+
+// Prevent HMR from closing the WebSocket connection
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    console.log('[TranslationQueue] Hot reload detected, preserving WebSocket connection')
+  })
+
+  // Clean up WebSocket on full page reload
+  import.meta.hot.dispose(() => {
+    console.log('[TranslationQueue] Module disposing, closing WebSocket')
+    if (globalWebSocket) {
+      globalWebSocket.close()
+      globalWebSocket = null
+    }
+  })
+}
