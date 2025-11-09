@@ -8,7 +8,6 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import Store from 'electron-store'
 import { WebSocket, WebSocketServer } from 'ws'
 import { check_update } from './modules/check_update.js'
-import { emit_osc, empty_queue } from './modules/osc.js'
 import { initialize_wsserver } from './modules/wsserver.js'
 
 interface Schema {
@@ -275,26 +274,6 @@ ipcMain.on('toggle_maximize', () => {
 // event for minimizing
 ipcMain.on('minimize', () => {
   win.minimize()
-})
-
-// event for text typing indicator
-ipcMain.on('typing-text-event', (event, args) => {
-  emit_osc(['/chatbox/typing', args])
-})
-
-// event for sending text
-let text_queue = []
-ipcMain.on('send-text-event', (event, args) => {
-  args = JSON.parse(args)
-  const new_text = args.transcript.includes(' ') ? args.transcript.match(/.{1,140}(\s|$)/g) : args.transcript.match(/.{1,140}/g)
-  text_queue = [...text_queue, ...new_text]
-  if (text_queue.length >= 1)
-    empty_queue(text_queue, args.hide_ui, args.sfx)
-})
-
-// event for sending osc messages
-ipcMain.on('send-osc-message', (event, args) => {
-  emit_osc([args.route, args.value], args.ip, args.port)
 })
 
 let wsserver: WebSocketServer = null

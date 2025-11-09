@@ -1,15 +1,17 @@
-# Docker Mode Feature Comparison
+# Docker Mode Features
 
-This document explains which features work in Docker mode vs Electron desktop mode.
+This document explains what mimiuchi can do in Docker mode. As of v1.0.0, Docker mode provides the complete feature set for web-based multi-language translation.
 
-## ✅ Features That Work in Docker Mode
+> **Note**: For Docker installation and deployment instructions, see [DOCKER.md](DOCKER.md). This document focuses on features, capabilities, and church-specific deployment patterns.
+
+## ✅ All Core Features Work
 
 ### Core Functionality
 - ✅ **Web Interface** - Full Vue.js UI accessible from any browser
 - ✅ **Multi-Language Streams** - Spanish, Ukrainian, Russian, Portuguese, French, Korean, Mandarin, Tagalog, Vietnamese, Arabic, Hindi, Polish
 - ✅ **Real-time Translation** - OpenAI GPT-4o-mini with church-specific context
 - ✅ **WebSocket Broadcasting** - Translations sent to all connected browser clients
-- ✅ **Speech-to-Text** (with limitations - see below)
+- ✅ **Speech-to-Text** - Multiple options available (see below)
 - ✅ **Text Display** - Customizable text window with auto-scrolling
 - ✅ **Word Replacement** - Custom vocabulary and corrections
 - ✅ **Speaker Profiles** - Different settings per speaker
@@ -32,37 +34,12 @@ These pages:
 - Optimized for mobile/tablet display
 - Perfect for projection screens or displays
 
-## ❌ Features That DON'T Work in Docker Mode
-
-### Electron-Specific Features
-- ❌ **OSC Broadcasting** - VRChat/avatar parameter control (requires native UDP sockets)
-- ❌ **OBS WebSocket** - Direct OBS integration (requires native WebSocket client)
-- ❌ **Desktop Window Management** - Custom window frames, minimize/maximize
-- ❌ **System Tray** - Background running with tray icon
-- ❌ **Auto-Launch** - Starting on system boot
-- ❌ **Local File System** - Direct file access beyond downloads
-
-### Why OSC Doesn't Work
-OSC (Open Sound Control) requires:
-1. Native UDP socket access
-2. Electron's IPC system
-3. node-osc library (Node.js native module)
-
-Browsers don't have UDP socket access for security reasons. Docker mode runs as a web server, so it inherits browser limitations.
-
-### Workaround for OSC
-If you need OSC functionality:
-1. Run the **Electron desktop app** on a local machine
-2. Deploy **Docker server** for multi-language streams
-3. Desktop app connects to Docker server's WebSocket
-4. Desktop app handles OSC while Docker handles web clients
-
-## ⚠️ Features with Limitations
+## ⚙️ Configuration Options
 
 ### Speech-to-Text Options
 
 **Deepgram (Cloud API)**
-- ✅ Works in Docker mode
+- ✅ Fully supported
 - Requires: Deepgram API key
 - Cost: $0.0043/minute (~$0.26 per hour)
 - Quality: Excellent
@@ -70,7 +47,7 @@ If you need OSC functionality:
 - Setup: Enter API key in Settings → STT
 
 **OpenAI Whisper (Cloud API)**
-- ✅ Works in Docker mode
+- ✅ Fully supported
 - Requires: OpenAI API key
 - Cost: $0.006/minute (~$0.36 per hour)
 - Quality: Excellent
@@ -78,7 +55,7 @@ If you need OSC functionality:
 - Setup: Enter API key in Settings → STT
 
 **Web Speech API (Browser-based)**
-- ⚠️ **Limited browser support** in Docker mode
+- ⚠️ **Limited browser support**
 - Only works in: Chrome, Edge (Chromium-based browsers)
 - Does NOT work in: Firefox, Safari (for continuous recognition)
 - Free: No API key required
@@ -90,7 +67,7 @@ If you need OSC functionality:
 ### Translation
 
 **OpenAI Translation**
-- ✅ Works perfectly in Docker mode
+- ✅ Works perfectly
 - Requires: OpenAI API key in Settings → Translation
 - **Important**: API key must be set on EACH device/browser
   - Main operator device: Set API key
@@ -99,7 +76,7 @@ If you need OSC functionality:
 
 **How it works:**
 1. Main operator device sends transcript via WebSocket
-2. Docker server's translation worker processes it (needs API key)
+2. Server's translation worker processes it (needs API key)
 3. Server broadcasts translations to all connected clients
 4. Language stream pages receive and display translations
 

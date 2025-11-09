@@ -3,7 +3,7 @@ export default {
   welcome: {
     intro: {
       title: 'Welcome to {name}!',
-      description: '{name} is a captioning tool that can display spoken or typed text onto a customizable window so that you can effortlessly display the results in applications like OBS. It also supports relaying text and commands to other applications (like VRChat).',
+      description: '{name} is a captioning tool that can display spoken or typed text onto a customizable window for real-time translation and streaming.',
       button: 'next',
     },
     controls: {
@@ -37,15 +37,6 @@ export default {
       websocket: {
         opened: 'WebSocket opened.',
         closed: 'WebSocket closed.',
-      },
-      websocket_obs: {
-        connecting: 'Connecting to OBS WebSocket server...',
-        failed: 'OBS WebSocket failed to connect to server. Please verify settings.',
-        opened: 'OBS WebSocket connected to server.',
-        closed: 'OBS WebSocket disconnected from server.',
-        error: {
-          text_source: 'OBS WebSocket: The text source does not exist in the OBS instance. Please verify settings.',
-        },
       },
     },
   },
@@ -231,88 +222,6 @@ export default {
           confirm: 'Confirm',
           delete: 'Delete',
         },
-      },
-    },
-    osc: {
-      title: 'VRChat',
-      title_tooltip: 'Broadcasting is required.',
-      general: {
-        title: 'General',
-        description: 'Settings for customizing OSC connection',
-        osc_ip: 'OSC IP',
-        osc_port: 'OSC Port',
-        enabled: 'Send text to the VRChat chatbox',
-        enabled_subtitle: 'Send text to the VRChat chatbox via OSC.',
-        show_keyboard: 'Send text to the VRChat keyboard',
-        show_keyboard_subtitle: 'Open the VRChat keyboard for chatbox input and populate it with text.',
-        sfx: 'VRChat Notification SFX',
-        sfx_subtitle: 'Trigger the VRChat notification sound effect for other players when sending text.',
-        typing_indicator_speech: 'Typing indicator for speech-to-text',
-        typing_indicator_speech_subtitle: 'Show the VRChat typing indicator {typing_indicator_icon} for other players when using speech-to-text.',
-        typing_indicator_keyboard: 'Typing indicator for VRChat keyboard',
-        typing_indicator_keyboard_subtitle: 'Show the VRChat typing indicator {typing_indicator_icon} for other players when using the VRChat keyboard.',
-        typing_indicator_icon: 'mdi-message-processing',
-        unsupported: {
-          text: 'To use OSC, you must use the {link}. Once installed, the website and desktop versions can be used together with the {icon} button. {kaomoji}',
-          link: 'desktop app',
-          icon: 'mdi-broadcast',
-          kaomoji: '(  ᐡᴗ  ̫ ᴗᐡ)',
-        },
-      },
-      triggers: {
-        title: 'Triggers',
-        description: 'Send OSC messages when sending/speaking trigger phrases',
-        button: {
-          cancel: 'CANCEL',
-          confirm: 'CONFIRM',
-          add: 'ADD',
-          delete: 'DELETE',
-        },
-        profile: {
-          label: 'Select a profile',
-          dialog: {
-            title: {
-              add: 'Add new profile',
-              edit: 'Rename profile',
-            },
-            field_label: 'Profile name',
-          },
-          delete_dialog: {
-            title: 'Delete profile',
-            text: 'Are you sure that you want to delete this profile?',
-          },
-        },
-        trigger: {
-          button: {
-            edit: 'EDIT',
-            delete: 'DELETE',
-          },
-          dialog_title: {
-            add: 'Add trigger',
-            edit: 'Edit trigger',
-          },
-          address: 'Address',
-          empty: 'none :c',
-          trigger_phrases: 'Trigger phrases:',
-          trigger_phrases_add: 'Add trigger word/phrase',
-          assign: {
-            phrases: 'Assign phrases:',
-            phrases_type: 'Value type',
-            phrases_value: 'Value ', // This leading space is for displaying "Value 1" and "Value 2".
-            phrases_add: 'Add assign word/phrase (e.g., on)',
-            behavior: 'Behavior',
-            behavior_options: {
-              default: 'Default',
-              pulse: 'Pulse',
-              pulse_wait: 'Wait',
-            },
-          },
-          delete_dialog: {
-            title: 'Delete trigger',
-            text: 'Are you sure that you want to delete this trigger?',
-          },
-        },
-        empty: 'Use the {icon} button to add a new trigger!',
       },
     },
   },

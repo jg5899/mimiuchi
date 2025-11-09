@@ -19,14 +19,12 @@ import { useSettingsStore } from '@/stores/settings'
 import { useSpeechStore } from '@/stores/speech'
 import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
-import { useOSCStore } from '@/stores/osc'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
 import { global_langs } from '@/plugins/i18n'
 
 import is_electron from '@/helpers/is_electron'
 
 import SystemBar from '@/components/appbars/SystemBar.vue'
-import migrate_to_v0_5_0 from '@/migration/migrate_to_v0.5.0'
 
 const { locale } = useI18n()
 
@@ -38,7 +36,6 @@ const wordReplaceStore = useWordReplaceStore()
 const translationStore = useTranslationStore()
 const settingsStore = useSettingsStore()
 const connectionsStore = useConnectionsStore()
-const oscStore = useOSCStore()
 const multiTranslationStore = useMultiTranslationStore()
 
 const router = useRouter()
@@ -64,9 +61,6 @@ translationStore.$subscribe((_, state) => {
 connectionsStore.$subscribe((_, state) => {
   localStorage.setItem('connections', JSON.stringify(state))
 })
-oscStore.$subscribe((_, state) => {
-  localStorage.setItem('osc', JSON.stringify(state))
-})
 multiTranslationStore.$subscribe((_, state) => {
   localStorage.setItem('multi_translation', JSON.stringify(state))
 })
@@ -77,15 +71,7 @@ settingsStore.$patch(JSON.parse(localStorage.getItem('settings') || '{}'))
 wordReplaceStore.$patch(JSON.parse(localStorage.getItem('word_replace') || '{}'))
 translationStore.$patch(JSON.parse(localStorage.getItem('translation') || '{}'))
 connectionsStore.$patch(JSON.parse(localStorage.getItem('connections') || '{}'))
-oscStore.$patch(JSON.parse(localStorage.getItem('osc') || '{}'))
 multiTranslationStore.$patch(JSON.parse(localStorage.getItem('multi_translation') || '{}'))
-
-// Migration code – start
-if (settingsStore.config_version < 1) {
-  migrate_to_v0_5_0()
-  settingsStore.config_version = 1
-}
-// Migration code – end
 
 settingsStore.languages = global_langs
 

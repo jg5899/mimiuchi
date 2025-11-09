@@ -78,43 +78,6 @@
             </v-list-item>
           </v-card>
         </v-col>
-        <v-col :cols="12">
-          <v-card class="py-2" flat>
-            <v-list-item
-              :title="connectionsStore.core_obs.title"
-              :subtitle="display_subtitle(connectionsStore.core_obs.type)"
-            >
-              <template #prepend>
-                <v-icon
-                  :icon="connectionsStore.core_obs.icon"
-                  size="30"
-                  color="background-variant"
-                  class="mr-4"
-                />
-              </template>
-              <v-spacer />
-              <template #append>
-                <v-btn
-                  class="mr-4"
-                  icon variant="text"
-                  @click.stop="edit_connection(connectionsStore.core_obs)"
-                >
-                  <v-icon>mdi-cog</v-icon>
-                </v-btn>
-                <v-switch
-                  v-model="connectionsStore.core_obs.enabled"
-                  color="primary"
-                  inset
-                  hide-details
-                  @update:model-value="() => {
-                    dialog_user_connection_id = -1
-                    toggle_open_obs()
-                  }"
-                />
-              </template>
-            </v-list-item>
-          </v-card>
-        </v-col>
         <!-- User-defined connections -->
         <!-- WebSockets -->
         <v-col
@@ -266,15 +229,6 @@ function toggle_open_mimiuchi_websocket() {
       connectionsStore.connect_mimiuchi_websocket()
     else
       connectionsStore.disconnect_mimiuchi_websocket()
-  }
-}
-
-function toggle_open_obs() {
-  if (defaultStore.broadcasting) {
-    if (connectionsStore.core_obs.enabled)
-      connectionsStore.connect_obs()
-    else
-      connectionsStore.disconnect_obs()
   }
 }
 

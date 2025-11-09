@@ -2,111 +2,133 @@
   <img src="https://mimiuchi.com/logo-256x256.png" width="100">
 </p>
 
-# mimiuchi: speech-to-text
+# mimiuchi: Multi-Language Church Translation
 
-mimiuchi is a free, customizable, OSC capable, speech-to-text application for displaying text or relaying it to other applications like OBS or VRChat. Its customizable text window is also designed to be paired with applications like OBS. It runs on the web, with little setup required beyond customization. You can try it out right now at [mimiuchi.com](https://mimiuchi.com/) with Chrome, Safari, or Edge. UI currently supports English, Spanish (España), Japanese (日本語), and Chinese (简体中文)！
+mimiuchi is a free, accessible, real-time translation system designed for churches serving multi-language congregations. Whether you're a small church with immigrant families or a growing ministry reaching diverse communities, mimiuchi provides professional-quality live translation without expensive equipment or subscriptions.
+
+Display live translations on screens throughout your sanctuary, provide hearing accessibility through real-time captions, or stream multiple language versions of your service simultaneously. UI supports English, Spanish (España), Japanese (日本語), and Chinese (简体中文).
+
+Try it now at [mimiuchi.com](https://mimiuchi.com/) with Chrome, Safari, or Edge.
 
 ### Features
 
-- Speech-to-text
-- Text-to-speech
-- On-device translations
-- OBS websocket support
-- OSC broadcasting (for apps like VRChat)
-- Custom OSC param execution via language triggers ("turn my marker on" -> `/avatar/parameter/Marker True`)
-- ...and many settings to customize the experience!
+- Real-time speech-to-text transcription
+- Multi-language translation powered by AI
+- Separate display streams for each language
+- Hearing accessibility through live captions
+- Text-to-speech for vision accessibility
+- WebSocket broadcasting to multiple devices
+- Customizable text displays for projection
+- Self-hosted deployment for privacy and reliability
+- Zero recurring costs (when using free speech APIs)
+- Browser-based - works on any device with Chrome, Safari, or Edge
 
-## How to use
+## How to Use
 
-### Speech-to-Text
+### Basic Setup (Browser-Based)
 
-Simply go to [mimiuchi.com](https://mimiuchi.com/) and press the mic button! You will need to grant access the first time you do it. Currently, mimiuchi uses [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) to perform speech-to-text, which is only supported on the web version. You [can read more about it below](#web-speech-api). In the future I will support more options.
+1. Go to [mimiuchi.com](https://mimiuchi.com/) and press the mic button
+2. Grant microphone access when prompted
+3. Select your target languages from the settings
+4. Open language-specific streams on display devices:
+   - Spanish: `https://mimiuchi.com/#/spanish`
+   - Ukrainian: `https://mimiuchi.com/#/ukrainian`
+   - Russian: `https://mimiuchi.com/#/russian`
+   - Add more languages as needed
 
-### Using OSC
+### Church Service Workflow
 
-Click the broadcast button to toggle OSC. Due to how VRChat OSC works, this will require the desktop app version which you can download [here](https://github.com/naeruru/mimiuchi/releases/). If you're using speech-to-text, the web version can relay all speech-to-text to the deskop app when broadcasting is on.
+1. **Main Sanctuary Screen**: Display original language captions for hearing accessibility
+2. **Secondary Room Screens**: Show translated streams on tablets or displays
+3. **Mobile Access**: Congregants can follow along on their own devices
+4. **Recording**: Capture transcripts for sermon notes or accessibility archives
 
-### Everything together
+## Why mimiuchi?
 
-Running both applications at once, you simply toggle on the `MIC` and `BROADCAST` button on the web app. it will then toggle the desktop on with it.
+### Accessibility for All
 
-website -> desktop
+Every person deserves to understand and participate in worship. mimiuchi removes language barriers and provides hearing accessibility, ensuring your entire congregation can engage with services regardless of their native language or hearing ability.
 
-![mimiuchi-ws_example](https://github.com/naeruru/mimiuchi/assets/9059594/4a85352f-7183-448e-931e-0ab07054231e)
+### Built for Small Churches
 
-website -> desktop -> VRChat
+Many translation systems cost thousands of dollars in equipment and hundreds per month in subscriptions. mimiuchi is completely free and runs on hardware you already have - laptops, tablets, and existing displays. Small churches with limited budgets can now offer the same accessibility as large ministries.
 
-![mimiuchi-vrchat_example](https://github.com/naeruru/mimiuchi/assets/9059594/666900a9-d176-4c39-a5dd-6a320a46cd8c)
+### Privacy-Focused
 
-# Additional info
+Your sermons and services remain private. When self-hosted using Docker, all translation processing happens through your chosen providers with enterprise-grade security. No data is stored or shared with third parties beyond the translation APIs you configure.
 
-### Why?
+### Easy to Deploy
 
-I support the idea of people having many ways to communicate and do things. It is important to give people those tools and make them easily accessible. This app will give another way for people to display text in different applications like OBS or VRC. It is free and focused on privacy as an end goal. An example of a very similar application is [web captioner](https://webcaptioner.com/). However, I want to expand upon it and make this version unique!
+No IT expertise required. Our Docker deployment gets you running in minutes, and the browser-based interface works on any device without installing software.
 
-## Web Speech API
+## Docker Deployment (Recommended)
 
-mimiuchi uses [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) to perform speech-to-text, which is a [browser dependent](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API#browser_compatibility) API. Most browsers, like Chrome or Edge, will upload your audio to GCP or Azure respectively to have it processed, while the webpage never gets direct access to it. For example, you can read about Chrome's privacy pertaining to it [here](https://www.google.com/chrome/privacy/whitepaper.html#speech). I chose Web Speech API because it is completely free and requires no accounts to access. Unfortunately, its free use is disabled in electron's chromium, so this means speech-to-text in this form can only run in the browser. This adds slight complexity when you want to interface with local applications like VRChat by requiring a "middle application" to relay the text back and forth. Still, I think that this approach is worth it as it provides a free way to use powerful speech-to-text models for people who dont have the means to pay.
+mimiuchi is designed to run as a self-hosted web service, perfect for churches. Deploy on a local server or cloud hosting for network-wide access.
 
-In the future, I would like to support a standalone desktop experience, but this is currently on hold till I figure out how popular this might be.
-
-## Todo
-
-in no particular order...
-
-- more customization for text window
-- ~~better intermediate text results~~ ✅
-- ~~text-to-speech~~ ✅
-- more TTS/STT options (for standalone desktop experience)
-- VRChat text shader support (sending character data to float params)
-- ~~add ability to export settings/transcripts~~✅
-- ~~better webkit/safari support~~✅
-- ~~OBS websocket and 'text source' support~~
-- option for second 'control panel' type screen with focus on quick switching between settings
-- better generic osc support
-- ~~translation support~~✅
-- ~~webhook/websocket customization to connect to other apps that aren't related to me~~✅
-- documentation
-- steamvr integration
-- continuous text transmission option for VRChat
-- locally run whisper c++ bindings / WebGPU based inference
-  - this point is really important to me, because I want a truly low latency private STT system. but.. I want to make sure I do it the right way, such that it can work entirely in the browser, utilizing the full power of your GPU or CPU, completely local and with minimal latency. A lot of this is very new, so it may take some time to iron it out. the first versions of it may differ greatly from the end goal.
-
-## Download
-
-See the [release page](https://github.com/naeruru/mimiuchi/releases) to install the latest version of the desktop app. The desktop version lets you use additional features like OSC.
-
-## Docker Deployment
-
-mimiuchi can be deployed as a containerized web service using Docker. This is ideal for:
-- **Churches** - Host on a local server, access from multiple devices
-- **Cloud deployment** - Run on AWS, Google Cloud, DigitalOcean, etc.
-- **Easy updates** - Pull latest code and rebuild container
-- **Multi-language services** - Display translations on separate screens
+### Benefits of Docker Deployment
+- **Multi-device access** - Any device on your network can view streams
+- **Reliable service** - Runs continuously without manual startup
+- **Easy updates** - Pull latest features with simple commands
+- **Cloud or local** - Deploy on-site or use affordable cloud hosting
+- **Professional setup** - Looks and works like enterprise software
 
 ### Quick Start
 
 ```bash
+# Clone the repository
+git clone https://github.com/naeruru/mimiuchi.git
+cd mimiuchi
+
 # Build and start the container
 npm run docker:build
 npm run docker:run
 
-# Access the app
-# Web interface: http://localhost:3000
-# Language streams: http://localhost:3000/#/spanish
+# Access the application
+# Main interface: http://localhost:3000
+# Spanish stream: http://localhost:3000/#/spanish
+# Ukrainian stream: http://localhost:3000/#/ukrainian
+# Add more languages as needed
 ```
 
-See [DOCKER.md](DOCKER.md) for complete deployment instructions, configuration options, and troubleshooting.
+See [DOCKER.md](DOCKER.md) for complete deployment instructions, configuration options, API setup, and troubleshooting.
 
-### Features in Docker Mode
-- ✅ Multi-language translation streams (Spanish, Ukrainian, Russian, etc.)
-- ✅ Real-time WebSocket broadcasting
-- ✅ OpenAI GPT-4o-mini translation
-- ✅ Deepgram or Whisper speech-to-text
-- ✅ Network accessible from any device
-- ❌ OSC support (Electron-only feature)
+### Docker Features
+- Real-time multi-language translation streams
+- WebSocket broadcasting to all connected devices
+- OpenAI GPT-4o-mini or other AI translation services
+- Deepgram, Whisper, or browser-based speech-to-text
+- Network accessible from any device
+- Customizable translation languages
 
-## Building it yourself
+## Desktop App (Optional)
+
+For advanced features or offline use, download the desktop Electron wrapper:
+
+See the [release page](https://github.com/naeruru/mimiuchi/releases) to install the latest version.
+
+The desktop version includes additional features like local OSC broadcasting for specialized setups, but most church uses are best served by the Docker deployment.
+
+## Speech Recognition Technology
+
+mimiuchi uses the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) for browser-based speech-to-text. This API is built into modern browsers (Chrome, Edge, Safari) and processes audio securely through Google Cloud Platform or Azure without the webpage accessing your audio directly. You can read about Chrome's privacy approach [here](https://www.google.com/chrome/privacy/whitepaper.html#speech).
+
+We chose Web Speech API because it's completely free and requires no accounts, making it accessible to churches of any size. For self-hosted Docker deployments, you can also configure Deepgram or Whisper APIs for enhanced accuracy and additional language support.
+
+## Roadmap
+
+Planned improvements include:
+
+- More customization options for text displays
+- Additional speech-to-text provider options
+- Locally-run Whisper for fully private operation
+- Better translation model options
+- Second control panel for quick setting adjustments
+- Improved transcript export and archival
+- Enhanced mobile display layouts
+- WebGPU-based local inference (fully private, no cloud APIs needed)
+- Continuous reliability improvements
+
+## Building From Source
 
 ### Requirements
 
@@ -114,19 +136,24 @@ See [DOCKER.md](DOCKER.md) for complete deployment instructions, configuration o
 
 ### Setup
 
-Use `npm install` to install dependencies.
+```bash
+# Install dependencies
+npm install
 
-Use `npm run dev` to run the application. It will run an electron version and web version.
+# Run in development mode
+npm run dev
 
-Or you can use `npm run build` to build the application. It will create an exe file in `release/`.
+# Build desktop application
+npm run build  # Creates executable in release/
+```
 
 ## Special Thanks
 
-- [@fuwako](https://github.com/fuwako) who has done a ton of work in adding a lot of great features, updating parts of the UI, and many QOL improvements.
-- [@jeremio](https://github.com/jeremio) who has done a lot of work in standardizing and formatting the code, as well as working on some of the Transformers.js code.
-- [@gujimy](https://github.com/gujimy) for the bulk of the Chinese translations
-- [@adrianpaniagualeon](https://github.com/adrianpaniagualeon) for the bulk of the Spanish translations
-- [@fuopy](https://github.com/fuopy) for the name, mimiuchi, which lends the name from a project they made long ago!
+- [@fuwako](https://github.com/fuwako) for extensive feature work, UI updates, and quality-of-life improvements
+- [@jeremio](https://github.com/jeremio) for code standardization and Transformers.js development
+- [@gujimy](https://github.com/gujimy) for Chinese translations
+- [@adrianpaniagualeon](https://github.com/adrianpaniagualeon) for Spanish translations
+- [@fuopy](https://github.com/fuopy) for the name "mimiuchi"
 
 ## License
 

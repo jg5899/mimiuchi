@@ -1,15 +1,17 @@
 # Docker Deployment Guide
 
-This guide explains how to deploy mimiuchi as a containerized web service using Docker.
+This guide explains how to deploy mimiuchi as a containerized web service using Docker for real-time church translation services.
 
 ## Overview
 
 The Docker deployment provides:
 - **Web-based interface** accessible from any browser on your network
-- **WebSocket server** for real-time translation broadcasting
+- **Real-time multi-language translation** for church services
+- **WebSocket server** for broadcasting translations to multiple devices
 - **No Electron required** - runs as a standalone Node.js server
 - **Easy updates** - rebuild and restart the container
 - **Portable** - move between machines easily
+- **Network-ready** - perfect for church settings with multiple display devices
 
 ## Architecture
 
@@ -156,24 +158,76 @@ deploy:
      - **OpenAI Whisper** (requires API key, good quality)
      - **Web Speech API** (free, browser-based, limited browser support)
 
-### Multi-Device Setup
+### Multi-Device Setup for Church Services
 
-#### Main Operator Device
+#### Main Operator Device (Sound Booth/Tech Area)
 - Access: http://[server-ip]:3000
 - Shows English transcription
 - Controls all settings
 - Start/stop transcription
+- Monitors translation quality
 
-#### Language Display Devices
+#### Language Display Devices (Congregation Areas)
 - Spanish: http://[server-ip]:3000/#/spanish
 - Ukrainian: http://[server-ip]:3000/#/ukrainian
 - Russian: http://[server-ip]:3000/#/russian
+- Portuguese: http://[server-ip]:3000/#/portuguese
+- French: http://[server-ip]:3000/#/french
 - (And other enabled languages)
 
 Each language page shows:
-- Real-time translated text
+- Real-time translated text in large, readable font
 - Auto-scrolling display
 - Optimized for mobile/tablet viewing
+- Clean interface ideal for projection or personal devices
+- No distracting controls or buttons
+
+**Typical Setup**:
+- Main operator uses laptop/desktop to control the system
+- Tablets/phones placed in pews showing different language streams
+- Optional: Project translations on screens in different areas of the church
+
+## Best Practices for Church Services
+
+### Pre-Service Checklist
+
+1. **Test 15-30 minutes before service**:
+   - Start Docker container
+   - Verify web interface loads
+   - Test microphone input
+   - Check all language display devices
+   - Run a test translation
+
+2. **Audio Setup**:
+   - Use a dedicated microphone for the speaker
+   - Position mic 6-12 inches from speaker's mouth
+   - Test audio levels (not too loud, not too quiet)
+   - Minimize background noise during speaking segments
+
+3. **Network Verification**:
+   - Ensure stable internet connection (for API calls)
+   - Verify all display devices are connected to WiFi
+   - Test WebSocket connections from each device
+
+4. **Display Device Positioning**:
+   - Place tablets/phones in accessible locations
+   - For projection, ensure text is readable from back rows
+   - Set screens to stay awake (disable auto-lock)
+
+### During Service
+
+- Keep main operator interface open to monitor status
+- Watch for connection errors or API issues
+- Have backup plan ready (printed translations, interpreter)
+- Start transcription at beginning of speaking segment
+- Stop transcription during music or non-translated portions
+
+### After Service
+
+- Stop transcription
+- Review any errors in logs
+- Note any improvements for next service
+- Keep Docker container running or stop to save resources
 
 ## Updates and Maintenance
 
@@ -285,6 +339,31 @@ docker images | grep mimiuchi
    - Run a test translation
    - Check logs for "Translation error" or "API key not configured"
 
+### Church-Specific Issues
+
+**Audio Quality Problems**:
+- Position microphone closer to speaker
+- Use a quality microphone (lavalier mic recommended)
+- Reduce background noise (HVAC, music during translation segments)
+- Test audio levels before service starts
+
+**Translation Delay**:
+- Normal delay is 2-5 seconds (speech recognition + translation)
+- Check internet connection speed
+- Verify API services are responding quickly
+- Consider using Deepgram for faster speech recognition
+
+**Display Devices Not Updating**:
+- Check WebSocket connection in browser console
+- Verify all devices are on the same network
+- Ensure firewall allows WebSocket connections (port 7714)
+- Try refreshing the language page on the display device
+
+**Text Too Small/Large on Display**:
+- Use browser zoom (Ctrl/Cmd + or -)
+- Adjust display device settings
+- For projection, test visibility from back of room before service
+
 ## Production Deployment
 
 ### Reverse Proxy (nginx)
@@ -340,6 +419,26 @@ The Docker container can be deployed to:
 - **DigitalOcean App Platform** - Simple deployment
 - **Any VPS** with Docker support
 
+#### Deployment Recommendations for Churches
+
+**On-Premises (Recommended)**:
+- Deploy on a church-owned computer/server
+- Full control over data and costs
+- No monthly hosting fees
+- Works entirely on local network
+- Best for: Churches with existing tech infrastructure
+
+**Cloud-Based**:
+- Deploy to a VPS or cloud service
+- Accessible from anywhere (useful for online services)
+- Requires monthly hosting fee ($5-20/month)
+- Best for: Churches doing hybrid in-person/online services
+
+**Hybrid**:
+- Run locally during services
+- Optionally use cloud for remote monitoring/testing
+- Best for: Maximum flexibility
+
 ## Cost Considerations
 
 ### API Costs (Church Budget Friendly)
@@ -347,24 +446,34 @@ The Docker container can be deployed to:
 **Deepgram STT**: $0.0043/minute
 - 1-hour service: ~$0.26
 - Monthly (4 services): ~$1.04
+- Yearly (52 services): ~$13.52
 
 **OpenAI Whisper**: $0.006/minute
 - 1-hour service: ~$0.36
 - Monthly (4 services): ~$1.44
+- Yearly (52 services): ~$18.72
 
 **OpenAI GPT-4o-mini Translation**:
 - Input: $0.150 per 1M tokens (~$0.01-0.02 per service)
 - Output: $0.600 per 1M tokens (~$0.04-0.06 per service)
 - 1-hour service: ~$0.05-0.08
 - Monthly (4 services): ~$0.20-0.32
+- Yearly (52 services): ~$2.60-4.16
 
-**Total Monthly Estimate**: $1.50-2.00 for 4 services per month
+**Total Estimates**:
+- Per service (1 hour): ~$0.31-0.44
+- Monthly (4 services): ~$1.50-2.00
+- Yearly (52 services): ~$19.50-26.00
+
+**Note**: Costs scale linearly with the number of languages enabled. The estimates above are per language stream.
 
 ### Free Alternatives
 
 - **Web Speech API** (STT): Free, browser-based
   - Limited browser support (Chrome, Edge)
   - Requires manual enable in browser settings
+  - Good option for churches with tight budgets
+  - Quality may vary depending on speaker accent and audio quality
 
 ## Support
 

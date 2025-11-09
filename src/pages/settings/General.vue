@@ -153,7 +153,6 @@ import { useSpeechStore } from '@/stores/speech'
 import { useConnectionsStore } from '@/stores/connections'
 import { useLogsStore } from '@/stores/logs'
 import { useTranslationStore } from '@/stores/translation'
-import { useOSCStore } from '@/stores/osc'
 import { useDefaultStore } from '@/stores/default'
 
 const { t } = useI18n()
@@ -169,7 +168,6 @@ const word_replace = ref(true)
 const speech = ref(true)
 const connection = ref(true)
 const translation = ref(true)
-const osc = ref(true)
 
 const appearanceStore = useAppearanceStore()
 const wordReplaceStore = useWordReplaceStore()
@@ -179,7 +177,6 @@ const connectionsStore = useConnectionsStore()
 const defaultStore = useDefaultStore()
 const logsStore = useLogsStore()
 const translationStore = useTranslationStore()
-const oscStore = useOSCStore()
 
 const router = useRouter()
 const auto_open_web_app_on_launch = ref(false) // Stores the display value for UI. The source of truth is in the Electron store
@@ -228,7 +225,6 @@ function reset_settings() {
     }
   }
   if (translation.value) reset(translationStore)
-  if (osc.value) reset(oscStore)
 
   reset_dialog.value = false
   snackbar_text.value = t('settings.general.reset.snackbar.title')

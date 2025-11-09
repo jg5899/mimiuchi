@@ -2,7 +2,7 @@ export default {
   welcome: {
     intro: {
       title: 'Bienvenido a {name}!',
-      description: '{name} es una herramienta de subtítulos que permite transcribir el texto hablado o escrito en una ventana personalizable para que puedas mostrar los resultados sin esfuerzo en aplicaciones como OBS. También admite la transmisión de texto y comandos a otras aplicaciones (como VRChat).',
+      description: '{name} es una herramienta de subtítulos que permite transcribir el texto hablado o escrito en una ventana personalizable para traducción en tiempo real y transmisión.',
       button: 'Siguiente',
     },
     controls: {
@@ -168,30 +168,6 @@ export default {
           websocket: 'Envia actualizaciones de texto en tiempo real a través de un websocket',
           webhook: 'Enviar actualizaciones de texto a través de una solicitud POST de Webhook',
         },
-      },
-    },
-    osc: {
-      title: 'VRChat',
-      general: {
-        title: 'General',
-        description: 'Configuraciones para personalizar la conexión OSC',
-        osc_ip: 'IP OSC predeterminada',
-        osc_port: 'Puerto OSC predeterminado',
-        enabled: 'Enviar todo el texto con OSC (al transmitir)',
-        show_keyboard: 'Abrir teclado en VRChat al enviar texto',
-        sfx: 'Reproduce un efecto de sonido después de enviar un texto.',
-        typing_indicator_speech: 'Habilitar indicador de escritura para Voz a Texto',
-        typing_indicator_keyboard: 'Habilitar el indicador de escritura al escribir',
-        typing_indicator_icon: 'mdi-message-processing',
-        unsupported: {
-          text: 'Para utilizar OSC, debe utilizar el {link}. Una vez instaladas, las versiones de sitio web y de escritorio se pueden utilizar junto con el {icon} botón. {kaomoji}',
-          link: 'Aplicación de Escritorio',
-          icon: 'mdi-broadcast',
-          kaomoji: '(  ᐡᴗ  ̫ ᴗᐡ)',
-        },
-      },
-      triggers: {
-        title: 'Parámetros personalizados',
       },
     },
   },

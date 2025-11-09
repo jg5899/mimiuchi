@@ -3,7 +3,7 @@ export default {
   welcome: {
     intro: {
       title: '{name}へようこそ！',
-      description: '{name}は、話されたや入力された言葉をカスタマイズ可能なテキストウィンドウに表示することができるで、OBSなどのアプリで簡単に結果を表示できるようにすることができます。また、他のアプリ（VRChatなど）へのテキストやコマンドの中継もサポートしています。',
+      description: '{name}は、話されたや入力された言葉をカスタマイズ可能なテキストウィンドウに表示し、リアルタイム翻訳と配信を行うツールです。',
       button: '次へ',
     },
     controls: {
@@ -210,83 +210,6 @@ export default {
           confirm: 'OK',
           delete: '削除',
         },
-      },
-    },
-    osc: {
-      title: 'VRChat',
-      title_tooltip: 'ブロードキャストを有効にする必要があります。',
-      general: {
-        title: 'OSC設定',
-        description: 'OSC接続の設定',
-        osc_ip: 'OSC IP',
-        osc_port: 'OSC Port',
-        enabled: 'OSCで全文送信（ブロードキャスト中）',
-        show_keyboard: 'テキスト送信時にVRChatでキーボードを開く',
-        sfx: 'テキスト送信後に効果音を再生',
-        typing_indicator_speech: 'Speech-to-text時のタイピングインジケーターを有効',
-        typing_indicator_keyboard: 'タイピング時にタイピングインジケーターを有効',
-        typing_indicator_icon: 'mdi-message-processing',
-        unsupported: {
-          text: 'OSCの設定は{link}で利用できます。インストールすれば、{icon}ボタンでウェブサイト版とデスクトップ版を一緒に使うことができます（Speech-to-text▶︎OSC）。{kaomoji}',
-          link: 'デスクトップアプリ版',
-          icon: 'mdi-broadcast',
-          kaomoji: '(  ᐡᴗ  ̫ ᴗᐡ)',
-        },
-      },
-      triggers: {
-        title: 'トリガー',
-        description: 'トリガーフレーズを入力したり話したりしてOSCメッセージを送信する',
-        button: {
-          cancel: 'キャンセル',
-          confirm: 'OK',
-          add: '追加',
-          delete: '削除',
-        },
-        profile: {
-          label: 'プロファイル選択',
-          dialog: {
-            title: {
-              add: 'プロファイルを追加',
-              edit: 'プロファイル名を変更',
-            },
-            field_label: 'プロファイル名',
-          },
-          delete_dialog: {
-            title: 'プロファイルを削除',
-            text: 'このプロファイルを削除してもよろしいですか？',
-          },
-        },
-        trigger: {
-          button: {
-            edit: '編集',
-            delete: '削除',
-          },
-          dialog_title: {
-            add: 'トリガーを追加',
-            edit: 'トリガーを編集',
-          },
-          address: 'アドレス',
-          empty: '無し (；ω；)',
-          trigger_phrases: 'トリガーフレーズ：',
-          trigger_phrases_add: 'トリガーフレーズを追加',
-          assign: {
-            phrases: '代入フレーズ：',
-            phrases_type: '型',
-            phrases_value: '値',
-            phrases_add: '代入フレーズを追加',
-            behavior: '挙動',
-            behavior_options: {
-              default: 'デフォルト',
-              pulse: 'パルス',
-              pulse_wait: '待機時間',
-            },
-          },
-          delete_dialog: {
-            title: 'トリガーを削除',
-            text: 'このトリガーを削除してもよろしいですか？',
-          },
-        },
-        empty: 'トリガーを追加するには{icon}ボタンを使用してください。',
       },
     },
   },

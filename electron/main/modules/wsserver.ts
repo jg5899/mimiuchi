@@ -1,5 +1,4 @@
 import { Buffer } from 'node:buffer'
-import { emit_osc } from './osc.js'
 
 // Attach listeners to WebSocket server and handle WebSocket clients
 function initialize_wsserver(win: any, websocketserver: any) {
@@ -36,12 +35,6 @@ function initialize_wsserver(win: any, websocketserver: any) {
           switch (message.data) {
             case 'stop':
               win.webContents.send('websocket-connect', false)
-              break
-            case 'speechstart':
-              emit_osc(['/chatbox/typing', true])
-              break
-            case 'speechend':
-              emit_osc(['/chatbox/typing', false])
               break
             default:
               break

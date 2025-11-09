@@ -19,16 +19,6 @@ import { forest_dark } from '@/plugins/themes/forest_dark'
 // additional components
 import { VIconBtn } from 'vuetify/labs/VIconBtn'
 
-// custom icons
-import obs from "@/assets/icons/obs.vue"
-const customSvgNameToComponent: any = {
-  obs,
-}
-const custom: IconSet = {
-  component: (props: IconProps) =>
-    h(props.tag, [h(customSvgNameToComponent[props.icon as string], { class: 'v-icon__svg' })]),
-}
-
 export default createVuetify({
   theme: {
     defaultTheme: 'midnight_purple',
@@ -48,8 +38,5 @@ export default createVuetify({
   },
   icons: {
     defaultSet: "mdi",
-    sets: {
-      custom,
-    },
   },
 })

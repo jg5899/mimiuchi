@@ -40,47 +40,6 @@
       />
 
       <v-divider />
-      <v-list-subheader>
-        {{ t('settings.osc.title') }}
-        <v-tooltip
-          open-on-click
-          class="settings_tooltip"
-          :text="t('settings.osc.title_tooltip')"
-        >
-          <template #activator="{ props }">
-            <v-icon
-              v-bind="props"
-              icon="mdi-broadcast"
-              color="success"
-              size="15"
-            />
-          </template>
-        </v-tooltip>
-      </v-list-subheader>
-      <v-list-item
-        v-for="(setting) in settings_osc"
-        :key="setting.value"
-        :value="setting.value"
-        :active="setting.value === route.name"
-        color="primary"
-        @click="setting.unavailable_condition ? null : router.push({ path: `/settings/${setting.value}` })"
-      >
-        <template #prepend>
-          <v-icon :class="{ 'settings-disabled': setting.unavailable_condition }">
-            {{ setting.icon }}
-          </v-icon>
-        </template>
-        <v-list-item-title :class="{ 'settings-disabled': setting.unavailable_condition }">
-          {{ setting.title }}
-        </v-list-item-title>
-        <v-tooltip
-          v-if="setting.unavailable_condition && setting.unavailable_tooltip"
-          v-bind="unavailable_tooltip_attributes"
-        >
-          <component :is="setting.unavailable_tooltip" />
-        </v-tooltip>
-      </v-list-item>
-      <v-divider />
     </v-list>
 
     <template #append>
@@ -126,9 +85,7 @@ import { useI18n } from 'vue-i18n'
 import is_electron from '@/helpers/is_electron'
 import { useSettingsStore } from '@/stores/settings'
 
-import OSCUnavailable from '@/pages/tooltips/OSCUnavailable.vue'
 import STTUnavailable from '@/pages/tooltips/STTUnavailable.vue'
-import TranslationUnavailable from '@/pages/tooltips/TranslationUnavailable.vue'
 
 declare const window: any
 
@@ -183,8 +140,6 @@ const settings_general = computed(() => {
       title: t('settings.translation.title'),
       value: 'translation',
       icon: 'mdi-translate',
-      unavailable_condition: !is_electron(),
-      unavailable_tooltip: TranslationUnavailable,
     },
     {
       title: 'Multi-Language Streams',
@@ -205,25 +160,6 @@ const settings_connections = computed(() => {
       title: t('settings.connections.title'),
       value: 'connections',
       icon: 'mdi-broadcast',
-    },
-  ]
-})
-
-const settings_osc = computed(() => {
-  return [
-    {
-      title: t('settings.osc.general.title'),
-      value: 'osc',
-      icon: 'mdi-transit-connection-variant',
-      unavailable_condition: !is_electron(),
-      unavailable_tooltip: OSCUnavailable,
-    },
-    {
-      title: t('settings.osc.triggers.title'),
-      value: 'osctriggers',
-      icon: 'mdi-format-list-bulleted-square',
-      unavailable_condition: !is_electron(),
-      unavailable_tooltip: OSCUnavailable,
     },
   ]
 })
