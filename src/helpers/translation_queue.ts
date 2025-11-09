@@ -95,6 +95,16 @@ class TranslationQueue {
     this.multiTranslationStore = multiTranslationStore
   }
 
+  setApiKey(apiKey: string) {
+    if (!is_electron() && this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('[TranslationQueue] Sending API key to server via WebSocket')
+      this.ws.send(JSON.stringify({
+        type: 'set-api-key',
+        apiKey
+      }))
+    }
+  }
+
   addTask(text: string, srcLang: string, tgtLang: string, logIndex: number) {
     this.queue.push({ text, srcLang, tgtLang, logIndex })
     if (!this.isProcessing) {
@@ -142,11 +152,26 @@ class TranslationQueue {
       setTimeout(() => this.processQueue(), 500)
     }
     else {
-      // For web version, just store the original text
-      if (this.multiTranslationStore) {
-        this.multiTranslationStore.updateTranslation(task.logIndex, task.tgtLang, task.text)
+      // For browser/Docker mode, send translation request via WebSocket
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        console.log('[TranslationQueue] Sending translation request via WebSocket:', task)
+        this.ws.send(JSON.stringify({
+          type: 'translate',
+          data: {
+            text: task.text,
+            src_lang: task.srcLang,
+            tgt_lang: task.tgtLang,
+            index: task.logIndex,
+          }
+        }))
+        // Wait a bit before processing next task to avoid overwhelming the server
+        setTimeout(() => this.processQueue(), 500)
+      } else {
+        console.warn('[TranslationQueue] WebSocket not connected, skipping translation')
+        // Retry this task after reconnection
+        this.queue.unshift(task)
+        setTimeout(() => this.processQueue(), 1000)
       }
-      this.processQueue()
     }
   }
 

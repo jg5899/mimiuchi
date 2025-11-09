@@ -419,14 +419,19 @@ export const useSpeechStore = defineStore('speech', () => {
         translate: log.translate,
         translation: log.translation
       })
-      if (is_electron() && translationStore.enabled && !log.translate && !log.translation) {
+      if (translationStore.enabled && !log.translate && !log.translation) {
         console.log('[Speech] Translation enabled, starting...')
         logsStore.logs[i].translate = true
 
-        // Send API key to worker if it's set
+        // Send API key to worker/server if it's set
         if (translationStore.openai_api_key) {
-          console.log('[Speech] Sending API key to worker')
-          window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
+          console.log('[Speech] Sending API key to translation service')
+          if (is_electron()) {
+            window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
+          } else {
+            // For browser/Docker mode, send via WebSocket
+            translationQueue.setApiKey(translationStore.openai_api_key)
+          }
         }
 
         // Queue translations for all enabled languages
@@ -440,14 +445,16 @@ export const useSpeechStore = defineStore('speech', () => {
           )
         }
 
-        // Also do the standard single translation for backward compatibility
-        console.log('[Speech] Sending standard translation request')
-        window.ipcRenderer.send('transformers-translate', {
-          text: log.transcript,
-          src_lang: translationStore.source,
-          tgt_lang: translationStore.target,
-          index: i,
-        })
+        // For Electron mode only: send standard single translation for backward compatibility
+        if (is_electron()) {
+          console.log('[Speech] Sending standard translation request')
+          window.ipcRenderer.send('transformers-translate', {
+            text: log.transcript,
+            src_lang: translationStore.source,
+            tgt_lang: translationStore.target,
+            index: i,
+          })
+        }
       }
 
       // timestamp
