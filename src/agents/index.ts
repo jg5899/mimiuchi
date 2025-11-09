@@ -8,9 +8,9 @@ import { ServiceSetupValidator } from './ServiceSetupValidator'
 import { APICostMonitor } from './APICostMonitor'
 import { WebSocketHealthMonitor } from './WebSocketHealthMonitor'
 import { SecurityAuditor } from './SecurityAuditor'
+import { TranslationQualityChecker } from './TranslationQualityChecker'
 
 // Import additional agents as they're created
-// import { TranslationQualityChecker } from './TranslationQualityChecker'
 // import { ErrorPatternAnalyzer } from './ErrorPatternAnalyzer'
 // import { PerformanceProfiler } from './PerformanceProfiler'
 // import { MultiLanguageConsistencyChecker } from './MultiLanguageConsistencyChecker'
@@ -24,11 +24,11 @@ export function registerAgents(): void {
   // Cost agents
   agentRegistry.register(new APICostMonitor())
 
+  // Quality agents
+  agentRegistry.register(new TranslationQualityChecker())
+
   // Security agents
   agentRegistry.register(new SecurityAuditor())
-
-  // Quality agents
-  // agentRegistry.register(new TranslationQualityChecker())
 
   // Performance agents
   // agentRegistry.register(new PerformanceProfiler())

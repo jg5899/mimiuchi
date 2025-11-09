@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mimiuchi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mimiuchi-server
+    ports:
+      - "3000:3000"   # Web interface
+      - "7714:7714"   # WebSocket server for translations
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - WS_PORT=7714
+    volumes:
+      # Optional: Mount a volume for logs or persistent data
+      - mimiuchi-data:/app/data
+    restart: unless-stopped
+    networks:
+      - mimiuchi-network
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  mimiuchi-data:
+    driver: local
+
+networks:
+  mimiuchi-network:
+    driver: bridge

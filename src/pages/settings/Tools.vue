@@ -95,6 +95,33 @@
           </v-list>
         </v-col>
 
+        <!-- Quality Agents -->
+        <v-col :cols="12">
+          <h4 class="text-subtitle-1 mb-2">
+            <v-icon>mdi-star-check</v-icon> Quality & Accuracy
+          </h4>
+          <v-list>
+            <v-list-item
+              v-for="agent in qualityAgents"
+              :key="agent.id"
+              :prepend-icon="agent.icon"
+              :title="agent.name"
+              :subtitle="agent.description"
+            >
+              <template #append>
+                <v-btn
+                  size="small"
+                  color="primary"
+                  :loading="agentsStore.isAgentRunning(agent.id).value"
+                  @click="runAgent(agent.id)"
+                >
+                  Run
+                </v-btn>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-col>
+
         <!-- Security Agents -->
         <v-col :cols="12">
           <h4 class="text-subtitle-1 mb-2">

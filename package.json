@@ -23,6 +23,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build && electron-builder",
+    "build:web": "vue-tsc --noEmit && vite build",
+    "build:server": "tsc server/index.ts --outDir dist-server --module nodenext --moduleResolution nodenext --esModuleInterop --target es2022 --lib es2022 --skipLibCheck",
+    "build:docker": "npm run build:web && npm run build:server",
+    "start:server": "node dist-server/index.js",
+    "docker:build": "docker build -t mimiuchi:latest .",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"

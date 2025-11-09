@@ -76,6 +76,36 @@ in no particular order...
 
 See the [release page](https://github.com/naeruru/mimiuchi/releases) to install the latest version of the desktop app. The desktop version lets you use additional features like OSC.
 
+## Docker Deployment
+
+mimiuchi can be deployed as a containerized web service using Docker. This is ideal for:
+- **Churches** - Host on a local server, access from multiple devices
+- **Cloud deployment** - Run on AWS, Google Cloud, DigitalOcean, etc.
+- **Easy updates** - Pull latest code and rebuild container
+- **Multi-language services** - Display translations on separate screens
+
+### Quick Start
+
+```bash
+# Build and start the container
+npm run docker:build
+npm run docker:run
+
+# Access the app
+# Web interface: http://localhost:3000
+# Language streams: http://localhost:3000/#/spanish
+```
+
+See [DOCKER.md](DOCKER.md) for complete deployment instructions, configuration options, and troubleshooting.
+
+### Features in Docker Mode
+- ✅ Multi-language translation streams (Spanish, Ukrainian, Russian, etc.)
+- ✅ Real-time WebSocket broadcasting
+- ✅ OpenAI GPT-4o-mini translation
+- ✅ Deepgram or Whisper speech-to-text
+- ✅ Network accessible from any device
+- ❌ OSC support (Electron-only feature)
+
 ## Building it yourself
 
 ### Requirements
