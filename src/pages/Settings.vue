@@ -151,6 +151,11 @@ const settings_general = computed(() => {
       value: 'tools',
       icon: 'mdi-tools',
     },
+    {
+      title: 'Display Presets',
+      value: 'display-presets',
+      icon: 'mdi-monitor-star',
+    },
   ]
 })
 

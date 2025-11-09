@@ -20,6 +20,7 @@ import { useSpeechStore } from '@/stores/speech'
 import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
+import { useDisplayPresetsStore } from '@/stores/display_presets'
 import { global_langs } from '@/plugins/i18n'
 
 import is_electron from '@/helpers/is_electron'
@@ -37,6 +38,7 @@ const translationStore = useTranslationStore()
 const settingsStore = useSettingsStore()
 const connectionsStore = useConnectionsStore()
 const multiTranslationStore = useMultiTranslationStore()
+const displayPresetsStore = useDisplayPresetsStore()
 
 const router = useRouter()
 
@@ -64,6 +66,9 @@ connectionsStore.$subscribe((_, state) => {
 multiTranslationStore.$subscribe((_, state) => {
   localStorage.setItem('multi_translation', JSON.stringify(state))
 })
+displayPresetsStore.$subscribe((_, state) => {
+  localStorage.setItem('display_presets', JSON.stringify(state))
+})
 
 appearanceStore.$patch(JSON.parse(localStorage.getItem('appearance') || '{}'))
 speechStore.$patch(JSON.parse(localStorage.getItem('speech') || '{}'))
@@ -72,6 +77,7 @@ wordReplaceStore.$patch(JSON.parse(localStorage.getItem('word_replace') || '{}')
 translationStore.$patch(JSON.parse(localStorage.getItem('translation') || '{}'))
 connectionsStore.$patch(JSON.parse(localStorage.getItem('connections') || '{}'))
 multiTranslationStore.$patch(JSON.parse(localStorage.getItem('multi_translation') || '{}'))
+displayPresetsStore.$patch(JSON.parse(localStorage.getItem('display_presets') || '{}'))
 
 settingsStore.languages = global_langs
 

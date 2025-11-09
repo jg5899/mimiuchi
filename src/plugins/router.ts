@@ -15,6 +15,7 @@ import Translation from '@/pages/settings/Translation.vue'
 import SpeakerProfiles from '@/pages/settings/SpeakerProfiles.vue'
 import MultiLanguage from '@/pages/settings/MultiLanguage.vue'
 import Tools from '@/pages/settings/Tools.vue'
+import DisplayPresets from '@/pages/settings/DisplayPresets.vue'
 import Connections from '@/components/settings/connections/Connections.vue'
 import LanguageStream from '@/pages/LanguageStream.vue'
 
@@ -86,6 +87,11 @@ const routes = [
         path: 'tools',
         name: 'tools',
         component: Tools,
+      },
+      {
+        path: 'display-presets',
+        name: 'display-presets',
+        component: DisplayPresets,
       },
       {
         path: 'connections',
