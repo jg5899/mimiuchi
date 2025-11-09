@@ -110,6 +110,9 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
   // Multi-language translation logs
   const multiLogs = ref<TranslationLog[]>([])
 
+  // Log rotation to prevent unbounded memory growth
+  const MAX_LOGS = 200 // Keep last 200 logs
+
   // Throttle mechanism to slow down translation updates for better readability
   const updateThrottleTime = 400 // milliseconds between updates per log entry
   const lastUpdateTimes = new Map<string, number>()
@@ -133,6 +136,18 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
       time: new Date(),
     }
     multiLogs.value.push(log)
+
+    // Implement log rotation to prevent memory leaks
+    if (multiLogs.value.length > MAX_LOGS) {
+      const logsToRemove = multiLogs.value.length - MAX_LOGS
+      multiLogs.value = multiLogs.value.slice(logsToRemove)
+
+      // Clean up old throttle entries
+      lastUpdateTimes.clear()
+
+      console.log(`[MultiTranslation] Rotated logs, removed ${logsToRemove} old entries`)
+    }
+
     return multiLogs.value.length - 1
   }
 
@@ -198,6 +213,113 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
     logsStore.logs = []
   }
 
+  // Export transcripts and translations
+  function exportToText(): string {
+    let output = `Mimiuchi - Multi-Language Transcription Export\n`
+    output += `Generated: ${new Date().toLocaleString()}\n`
+    output += `Total Entries: ${multiLogs.value.length}\n`
+    output += `${'='.repeat(80)}\n\n`
+
+    multiLogs.value.forEach((log, index) => {
+      const timestamp = log.time ? new Date(log.time).toLocaleTimeString() : 'N/A'
+      output += `[${index + 1}] ${timestamp}\n`
+      output += `Original: ${log.transcript}\n`
+
+      const enabledLangs = enabledStreams.value
+      enabledLangs.forEach(stream => {
+        const translation = log.translations[stream.targetLang]
+        if (translation) {
+          output += `${stream.name}: ${translation}\n`
+        }
+      })
+      output += `\n`
+    })
+
+    return output
+  }
+
+  function exportToJSON(): string {
+    const exportData = {
+      metadata: {
+        exportDate: new Date().toISOString(),
+        totalEntries: multiLogs.value.length,
+        enabledLanguages: enabledStreams.value.map(s => ({
+          code: s.targetLang,
+          name: s.name
+        }))
+      },
+      logs: multiLogs.value.map((log, index) => ({
+        index: index + 1,
+        timestamp: log.time,
+        original: log.transcript,
+        translations: log.translations,
+        isFinal: log.isFinal
+      }))
+    }
+
+    return JSON.stringify(exportData, null, 2)
+  }
+
+  function exportToCSV(): string {
+    const enabledLangs = enabledStreams.value
+    const headers = ['Index', 'Timestamp', 'Original', ...enabledLangs.map(s => s.name)]
+    let csv = headers.join(',') + '\n'
+
+    multiLogs.value.forEach((log, index) => {
+      const timestamp = log.time ? new Date(log.time).toISOString() : ''
+      const escapeCsv = (str: string) => `"${str.replace(/"/g, '""')}"`
+
+      const row = [
+        index + 1,
+        escapeCsv(timestamp),
+        escapeCsv(log.transcript),
+        ...enabledLangs.map(s => escapeCsv(log.translations[s.targetLang] || ''))
+      ]
+      csv += row.join(',') + '\n'
+    })
+
+    return csv
+  }
+
+  function downloadExport(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  function exportTranscripts(format: 'txt' | 'json' | 'csv' = 'txt') {
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+    let content: string
+    let filename: string
+    let mimeType: string
+
+    switch (format) {
+      case 'json':
+        content = exportToJSON()
+        filename = `mimiuchi-transcripts-${timestamp}.json`
+        mimeType = 'application/json'
+        break
+      case 'csv':
+        content = exportToCSV()
+        filename = `mimiuchi-transcripts-${timestamp}.csv`
+        mimeType = 'text/csv'
+        break
+      default:
+        content = exportToText()
+        filename = `mimiuchi-transcripts-${timestamp}.txt`
+        mimeType = 'text/plain'
+    }
+
+    downloadExport(content, filename, mimeType)
+    console.log(`[MultiTranslation] Exported ${multiLogs.value.length} entries as ${format}`)
+  }
+
   // Sync multiLogs across windows using BroadcastChannel
   let skipNextUpdate = false
   let bc: BroadcastChannel | null = null
@@ -237,5 +359,6 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
     getLogsForLanguage,
     toggleLanguageStream,
     clearLogs,
+    exportTranscripts,
   }
 })

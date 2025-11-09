@@ -171,6 +171,32 @@ function getTransformersWorker(): Worker {
         console.log('[Main] wsserver is null, not broadcasting')
       }
     })
+
+    // Handle worker errors and crashes with auto-recovery
+    transformersWorker.on('error', (error) => {
+      console.error('[Main] Translation worker error:', error)
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('transformers-translate-render', {
+          status: 'error',
+          error: 'Worker encountered an error, restarting...'
+        })
+      }
+      // Reset worker so it recreates on next call
+      transformersWorker = null
+      // Auto-restart after 1 second
+      setTimeout(() => {
+        console.log('[Main] Restarting translation worker...')
+        getTransformersWorker()
+      }, 1000)
+    })
+
+    transformersWorker.on('exit', (code) => {
+      console.warn('[Main] Translation worker exited with code:', code)
+      if (code !== 0) {
+        console.error('[Main] Worker crashed, will restart on next translation request')
+        transformersWorker = null
+      }
+    })
   }
 
   return transformersWorker

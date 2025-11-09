@@ -46,8 +46,8 @@ export const useTranslationStore = defineStore('translation', () => {
       case 'error':
         console.error('Translation error received:', data.error)
         logsStore.loading_result = false
-        // Optionally disable translation on error to prevent further crashes
-        enabled.value = false
+        // Don't auto-disable - let user decide whether to disable
+        // Translation will retry on next text
         break
     }
   }

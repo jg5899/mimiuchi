@@ -20,6 +20,9 @@ class Deepgram {
   socket: WebSocket | null = null
   audioContext: AudioContext | null = null
   processor: ScriptProcessorNode | null = null
+  reconnectAttempts: number = 0
+  maxReconnectAttempts: number = 5
+  baseReconnectDelay: number = 1000 // 1 second
 
   onresult: Function = () => {}
   onend: Function = () => {}
@@ -91,6 +94,8 @@ class Deepgram {
 
     this.socket.onopen = () => {
       console.log('Deepgram WebSocket connected')
+      // Reset reconnection attempts on successful connection
+      this.reconnectAttempts = 0
     }
 
     this.socket.onmessage = (message) => {
@@ -121,13 +126,40 @@ class Deepgram {
 
     this.socket.onclose = (event) => {
       console.log('WebSocket closed:', event.code, event.reason)
-      if (this.listening) {
-        // Try to reconnect if still listening
+      if (this.listening && this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.reconnectAttempts++
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+        const delay = Math.min(this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000)
+        console.log(`Reconnecting attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`)
+
         setTimeout(() => {
           if (this.listening) {
+            // Stop existing audio stream before reconnecting
+            if (this.processor) {
+              this.processor.disconnect()
+              this.processor = null
+            }
+            if (this.audioContext) {
+              this.audioContext.close()
+              this.audioContext = null
+            }
+
+            // Reconnect WebSocket and restart audio stream
             this.connectWebSocket()
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+              this.startAudioStream()
+            } else {
+              // Wait for socket to open before starting audio
+              this.socket?.addEventListener('open', () => {
+                this.startAudioStream()
+              }, { once: true })
+            }
           }
-        }, 1000)
+        }, delay)
+      } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.error('Max reconnection attempts reached')
+        this.onerror({ error: 'max-reconnect', message: 'Failed to reconnect after multiple attempts' })
+        this.stop()
       }
     }
   }

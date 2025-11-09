@@ -124,13 +124,13 @@ let scrollTimeout: ReturnType<typeof setTimeout> | null = null
 watch(displayLogs, async () => {
   await nextTick()
 
-  // For browser, use long cooldown to prevent constant scrolling
+  // For browser, use cooldown to prevent constant scrolling while keeping it responsive
   if (isBrowser) {
     if (scrollTimeout) return // Skip if we're in cooldown
 
     scrollTimeout = setTimeout(() => {
       scrollTimeout = null
-    }, 3000) // 3 second cooldown between scrolls for browser
+    }, 1000) // 1 second cooldown between scrolls for browser (reduced from 3s for better UX)
   }
 
   if (streamContentRef.value?.$el) {

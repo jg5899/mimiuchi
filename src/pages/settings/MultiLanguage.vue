@@ -138,6 +138,40 @@
             Clear All Logs
           </v-btn>
         </v-col>
+
+        <v-col :cols="12" class="mt-4">
+          <h3 class="mb-2">
+            Export Transcripts & Translations
+          </h3>
+        </v-col>
+        <v-col :cols="12">
+          <v-btn-group divided>
+            <v-btn
+              color="success"
+              prepend-icon="mdi-file-document-outline"
+              @click="multiTranslationStore.exportTranscripts('txt')"
+            >
+              Export as Text
+            </v-btn>
+            <v-btn
+              color="info"
+              prepend-icon="mdi-code-json"
+              @click="multiTranslationStore.exportTranscripts('json')"
+            >
+              Export as JSON
+            </v-btn>
+            <v-btn
+              color="secondary"
+              prepend-icon="mdi-table"
+              @click="multiTranslationStore.exportTranscripts('csv')"
+            >
+              Export as CSV
+            </v-btn>
+          </v-btn-group>
+          <p class="text-caption mt-2 text-disabled">
+            Exports all transcriptions and translations from the current session ({{ multiTranslationStore.multiLogs.length }} entries)
+          </p>
+        </v-col>
       </v-row>
     </v-card-text>
   </v-card>
