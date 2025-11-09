@@ -191,6 +191,11 @@ const settings_general = computed(() => {
       value: 'multi-language',
       icon: 'mdi-google-translate',
     },
+    {
+      title: 'Diagnostic Tools',
+      value: 'tools',
+      icon: 'mdi-tools',
+    },
   ]
 })
 

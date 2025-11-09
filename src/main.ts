@@ -8,6 +8,9 @@ import router from '@/plugins/router'
 import i18n from '@/plugins/i18n'
 import storeReset from '@/plugins/storereset'
 
+// Initialize agent system
+import '@/agents'
+
 // import { loadFonts } from './plugins/webfontloader'
 // loadFonts()
 

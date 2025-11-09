@@ -14,6 +14,7 @@ import WordReplace from '@/pages/settings/WordReplace.vue'
 import Translation from '@/pages/settings/Translation.vue'
 import SpeakerProfiles from '@/pages/settings/SpeakerProfiles.vue'
 import MultiLanguage from '@/pages/settings/MultiLanguage.vue'
+import Tools from '@/pages/settings/Tools.vue'
 import Connections from '@/components/settings/connections/Connections.vue'
 import OSC from '@/pages/settings/OSC.vue'
 import OSCTriggers from '@/components/settings/osctriggers/OSCTriggers.vue'
@@ -82,6 +83,11 @@ const routes = [
         path: 'multi-language',
         name: 'multi-language',
         component: MultiLanguage,
+      },
+      {
+        path: 'tools',
+        name: 'tools',
+        component: Tools,
       },
       {
         path: 'connections',
