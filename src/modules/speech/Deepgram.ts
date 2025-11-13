@@ -21,6 +21,11 @@ class Deepgram {
   audioContext: AudioContext | null = null
   processor: ScriptProcessorNode | null = null
 
+  // Reconnection management
+  isReconnecting: boolean = false
+  reconnectAttempts: number = 0
+  maxReconnectAttempts: number = 5
+
   onresult: Function = () => {}
   onend: Function = () => {}
   onerror: Function = () => {}
@@ -32,6 +37,32 @@ class Deepgram {
     this.customKeywords = customKeywords
   }
 
+  private cleanupAudioStream() {
+    if (this.processor) {
+      this.processor.disconnect()
+      this.processor.onaudioprocess = null
+      this.processor = null
+    }
+    if (this.audioContext) {
+      this.audioContext.close()
+      this.audioContext = null
+    }
+  }
+
+  private cleanupWebSocket() {
+    if (this.socket) {
+      this.socket.onclose = null
+      this.socket.onerror = null
+      this.socket.onmessage = null
+      this.socket.onopen = null
+      if (this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ type: 'CloseStream' }))
+      }
+      this.socket.close()
+      this.socket = null
+    }
+  }
+
   async start() {
     if (!this.apiKey) {
       this.onerror({ error: 'no-api-key', message: 'Deepgram API key not configured' })
@@ -39,6 +70,7 @@ class Deepgram {
     }
 
     this.listening = true
+    this.reconnectAttempts = 0
 
     try {
       // Get microphone stream
@@ -121,13 +153,35 @@ class Deepgram {
 
     this.socket.onclose = (event) => {
       console.log('WebSocket closed:', event.code, event.reason)
-      if (this.listening) {
-        // Try to reconnect if still listening
+
+      // Cleanup audio stream before reconnecting
+      this.cleanupAudioStream()
+
+      if (this.listening && !this.isReconnecting) {
+        // Check if we've exceeded max reconnection attempts
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.error('Max reconnection attempts reached')
+          this.onerror({ error: 'max-reconnect', message: 'Maximum reconnection attempts exceeded' })
+          this.listening = false
+          return
+        }
+
+        // Set reconnecting flag to prevent simultaneous reconnections
+        this.isReconnecting = true
+        this.reconnectAttempts++
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+        const backoffDelay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 16000)
+
+        console.log(`Reconnecting in ${backoffDelay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+
         setTimeout(() => {
           if (this.listening) {
             this.connectWebSocket()
+            this.startAudioStream()
           }
-        }, 1000)
+          this.isReconnecting = false
+        }, backoffDelay)
       }
     }
   }
@@ -165,23 +219,10 @@ class Deepgram {
 
   stop() {
     this.listening = false
+    this.isReconnecting = false
 
-    if (this.processor) {
-      this.processor.disconnect()
-      this.processor = null
-    }
-
-    if (this.audioContext) {
-      this.audioContext.close()
-      this.audioContext = null
-    }
-
-    if (this.socket) {
-      // Send close message to Deepgram
-      this.socket.send(JSON.stringify({ type: 'CloseStream' }))
-      this.socket.close()
-      this.socket = null
-    }
+    this.cleanupAudioStream()
+    this.cleanupWebSocket()
 
     if (this.stream_ref) {
       this.stream_ref.getTracks().forEach(track => track.stop())

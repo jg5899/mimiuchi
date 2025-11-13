@@ -75,7 +75,18 @@ class WebSpeech {
       if (!this.stream)
         await this.get_sensitivity()
     }
-    catch {} // ios will deny the request on unsecure connections
+    catch (error: any) {
+      // iOS will deny getUserMedia on insecure connections (non-HTTPS)
+      // Log the error but don't fail the recognition start
+      console.warn('Could not initialize audio sensitivity detection:', error.message)
+
+      // Disable sensitivity-based features gracefully
+      this.max_sensitivity = Infinity
+      this.sensitivity = 0
+
+      // Continue with recognition even without sensitivity detection
+      // The main recognition.start() will request mic access separately
+    }
 
     this.recognition.onresult = (event: any) => {
       if (this.max_sensitivity < this.speechStore.stt.sensitivity)

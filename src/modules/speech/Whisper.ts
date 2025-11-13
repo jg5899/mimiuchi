@@ -36,6 +36,7 @@ class Whisper {
   recognition: boolean = true // Compatibility flag for speech recognition check
   last_error: string = ''
   try_restart_interval: any = null
+  chunk_interval: NodeJS.Timeout | null = null
   customPrompt: string = '' // Custom prompt for context-aware transcription
   useGPT4oPostProcessing: boolean = false // Enable GPT-4o refinement
 
@@ -105,7 +106,11 @@ class Whisper {
       this.onstart()
 
       // Auto-chunk every 3 seconds for balanced real-time + readability
-      const chunkInterval = setInterval(() => {
+      // Clear any existing interval first
+      if (this.chunk_interval) {
+        clearInterval(this.chunk_interval)
+      }
+      this.chunk_interval = setInterval(() => {
         if (this.media_recorder?.state === 'recording' && this.listening) {
           this.media_recorder.stop()
           setTimeout(() => {
@@ -115,7 +120,10 @@ class Whisper {
           }, 100)
         }
         else {
-          clearInterval(chunkInterval)
+          if (this.chunk_interval) {
+            clearInterval(this.chunk_interval)
+            this.chunk_interval = null
+          }
         }
       }, 3000)
     }
@@ -128,6 +136,11 @@ class Whisper {
 
   stop() {
     this.listening = false
+    // Clear chunk interval FIRST to prevent race conditions
+    if (this.chunk_interval) {
+      clearInterval(this.chunk_interval)
+      this.chunk_interval = null
+    }
     if (this.media_recorder && this.media_recorder.state !== 'inactive') {
       this.media_recorder.stop()
     }
