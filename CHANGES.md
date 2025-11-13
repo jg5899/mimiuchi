@@ -10,6 +10,7 @@ Major architectural simplification completed to focus on core speech-to-text, tr
 - **800+ lines of code removed**
 - **5 critical stability bugs fixed**
 - **3 dependencies eliminated**
+- **3 major enhancements added**
 - **Build verified and passing**
 
 ---
@@ -197,31 +198,82 @@ Desktop App
 
 ---
 
-## Future Enhancements (Discussed, Not Implemented)
+## Phase 3: Enhancements & New Features
 
-### High Priority
-1. **Contextual Translation Toggle**
-   - Keep rolling context window (last 3-5 sentences)
-   - Better translation quality for conversational flow
-   - Toggle: "Contextual Translation (higher quality, higher cost)"
+### 1. Contextual Translation
+**Status:** ✅ IMPLEMENTED
 
-2. **Built-in HTTP Server**
-   - Serve display webpage directly from desktop app
-   - Users connect to `http://localhost:PORT`
-   - No separate hosting needed
-   - Support custom display clients
+Better translation quality through rolling context window:
+- Added `use_context` toggle in translation settings
+- Configurable context window size (1-5 sentences, default: 3)
+- Maintains rolling history of previous sentences
+- Context sent to OpenAI API with each translation
+- Better pronoun resolution and conversational flow
+- Clear cost/quality trade-off indicator in UI
+- Default: OFF (maintains existing behavior)
 
-3. **Connection Info UI**
-   - Display local IP address and port
-   - QR code for mobile connection
-   - Copy URL button
-   - Connection status indicators
+**Files:**
+- `src/stores/translation.ts` - Context settings
+- `src/helpers/translation_queue.ts` - Context history management
+- `electron/main/worker/translation.ts` - OpenAI context integration
+- `src/pages/settings/Translation.vue` - UI toggle and slider
+
+### 2. Built-in HTTP Server + Display Client
+**Status:** ✅ IMPLEMENTED
+
+Stream transcriptions to any device via web browser:
+- Full HTTP server on configurable port (default: 8080)
+- Integrated WebSocket server for real-time streaming
+- Beautiful responsive display.html client page
+- Dark/light theme toggle with persistence
+- Shows original text + translations
+- Auto-reconnect on connection loss
+- Mobile-responsive design
+- IPC handlers for server control (start/stop/status/broadcast)
+
+**Files:**
+- `electron/main/modules/httpserver.ts` - HTTP + WebSocket server
+- `public/display.html` - Self-contained display client
+- `src/stores/httpserver.ts` - Server settings store
+- `electron/main/index.ts` - IPC handlers
+
+**Usage:** Navigate to `http://localhost:8080` from any device
+
+### 3. Connection Info UI
+**Status:** ✅ IMPLEMENTED
+
+Easy access to connection URLs for multi-device setup:
+- Shows all local IP addresses from network interfaces
+- Generates WebSocket URLs for each interface
+- Copy-to-clipboard for all URLs
+- IPv6 badge indicator
+- Only visible in Electron when broadcasting
+- Integrated into Connections settings page
+- Localized in 4 languages (en, es, ja, zh)
+
+**Files:**
+- `src/components/ConnectionInfo.vue` - Connection info display
+- `src/helpers/network.ts` - Network utility functions
+- `electron/main/index.ts` - get-network-interfaces IPC handler
+- `src/components/settings/connections/Connections.vue` - Integration
+
+### Impact
+- **Translation Quality:** Context-aware translations for better accuracy
+- **Universal Access:** Stream to any device via HTTP/WebSocket
+- **Easier Setup:** Connection info with copy-to-clipboard URLs
+
+**Total:** 5 new files, 10 modified files, 1,014 lines added
+
+---
+
+## Future Enhancements (Not Yet Implemented)
 
 ### Medium Priority
-4. Error monitoring integration (Sentry/PostHog)
-5. TypeScript strict mode
-6. Integration tests for critical paths
-7. Resource lifecycle manager abstraction
+1. QR code generation for mobile device connection
+2. Error monitoring integration (Sentry/PostHog)
+3. TypeScript strict mode
+4. Integration tests for critical paths
+5. Resource lifecycle manager abstraction
 
 ---
 
@@ -249,10 +301,12 @@ Desktop App
 1. **9381d2e** - Phase 1: Remove OSC, OBS WebSocket, and web relay functionality
 2. **f743b54** - Phase 2: Fix 5 critical stability issues
 3. **527b741** - Update package-lock.json after dependency removal
+4. **8b90651** - Add comprehensive change log documenting refactoring
+5. **a5784a9** - Phase 3: Add contextual translation, HTTP server, and connection info UI
 
 **Branch:** `claude/fix-stability-issues-011CV6JJMSiRcY2fGZqpWw7m`
 
-**Pull Request:** Ready for review
+**Pull Request:** Ready for review and testing
 
 ---
 
