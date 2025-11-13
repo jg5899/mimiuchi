@@ -160,6 +160,12 @@ export default {
     connections: {
       title: 'Conexiones',
       description: 'Enviar datos a otras aplicaciones cuando se utiliza {icon}',
+      info: {
+        title: 'Información de Conexión de Red',
+        description: 'Otros dispositivos pueden conectarse usando estas URLs',
+        local_addresses: 'Direcciones IP Locales',
+        no_interfaces: 'No se encontraron interfaces de red',
+      },
       dialog: {
         title: {
           edit: 'Actualizar conexión',

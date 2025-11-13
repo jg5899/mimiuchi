@@ -9,6 +9,7 @@ interface TranslationTask {
   srcLang: string
   tgtLang: string
   logIndex: number
+  context?: string
 }
 
 class TranslationQueue {
@@ -16,6 +17,7 @@ class TranslationQueue {
   private isProcessing = false
   private translationStore: any = null
   private multiTranslationStore: any = null
+  private contextHistory: string[] = []
 
   constructor() {
     if (is_electron()) {
@@ -31,21 +33,39 @@ class TranslationQueue {
     this.multiTranslationStore = multiTranslationStore
   }
 
-  addTask(text: string, srcLang: string, tgtLang: string, logIndex: number) {
-    this.queue.push({ text, srcLang, tgtLang, logIndex })
+  addTask(text: string, srcLang: string, tgtLang: string, logIndex: number, context?: string) {
+    this.queue.push({ text, srcLang, tgtLang, logIndex, context })
     if (!this.isProcessing) {
       this.processQueue()
     }
   }
 
   addMultiLanguageTasks(text: string, srcLang: string, logIndex: number) {
-    if (!this.multiTranslationStore)
+    if (!this.multiTranslationStore || !this.translationStore)
       return
+
+    // Build context string from last N items in contextHistory
+    let contextString = ''
+    if (this.translationStore.use_context && this.contextHistory.length > 0) {
+      const windowSize = this.translationStore.context_window_size || 3
+      const contextItems = this.contextHistory.slice(-windowSize)
+      contextString = contextItems.join(' ')
+    }
 
     const enabledLangs = this.multiTranslationStore.enabledTargetLangs
     enabledLangs.forEach((tgtLang: string) => {
-      this.addTask(text, srcLang, tgtLang, logIndex)
+      this.addTask(text, srcLang, tgtLang, logIndex, contextString)
     })
+
+    // Add current text to contextHistory
+    if (this.translationStore.use_context) {
+      this.contextHistory.push(text)
+      // Trim contextHistory to max size (keep double the window size for buffer)
+      const maxHistorySize = (this.translationStore.context_window_size || 3) * 2
+      if (this.contextHistory.length > maxHistorySize) {
+        this.contextHistory = this.contextHistory.slice(-maxHistorySize)
+      }
+    }
   }
 
   private async processQueue() {
@@ -64,6 +84,7 @@ class TranslationQueue {
       // Send translation request to Electron worker
       window.ipcRenderer.send('transformers-translate-multi', {
         text: task.text,
+        context: task.context || '',
         src_lang: task.srcLang,
         tgt_lang: task.tgtLang,
         index: task.logIndex,
@@ -91,6 +112,10 @@ class TranslationQueue {
   clearQueue() {
     this.queue = []
     this.isProcessing = false
+  }
+
+  clearContextHistory() {
+    this.contextHistory = []
   }
 }
 

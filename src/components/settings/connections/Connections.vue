@@ -16,6 +16,11 @@
       :user-connection-id="dialog_user_connection_id"
     />
     <v-divider />
+    <!-- Connection Info - Shows network details when broadcasting -->
+    <v-card-text v-if="is_electron()">
+      <ConnectionInfo />
+    </v-card-text>
+    <v-divider v-if="is_electron() && defaultStore.broadcasting" />
     <v-card-text v-if="!is_electron()">
       <v-row>
         <!-- User-defined connections -->
@@ -128,6 +133,7 @@ import { useI18n } from 'vue-i18n'
 import { useDefaultStore } from '@/stores/default'
 import { Connection, useConnectionsStore } from '@/stores/connections'
 import ConnectionDialog from '@/components/settings/connections/dialogs/ConnectionDialog.vue'
+import ConnectionInfo from '@/components/ConnectionInfo.vue'
 import is_electron from '@/helpers/is_electron'
 
 const { t } = useI18n()

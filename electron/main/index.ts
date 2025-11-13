@@ -7,6 +7,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 
 import Store from 'electron-store'
 import { check_update } from './modules/check_update.js'
+import { HttpServer, HttpServerConfig } from './modules/httpserver.js'
 
 interface Schema {
   'win_bounds': object
@@ -64,6 +65,9 @@ if (!app.requestSingleInstanceLock()) {
 let win: BrowserWindow | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
+
+// HTTP server for display client
+let httpServer: HttpServer | null = null
 
 const window_config: any = {
   title: 'Main window',
@@ -229,4 +233,82 @@ ipcMain.on('transformers-translate-multi', async (event, args) => {
 
 ipcMain.on('set-translation-api-key', async (event, apiKey) => {
   getTransformersWorker().postMessage({ type: 'set-api-key', apiKey })
+})
+
+// HTTP Server handlers
+ipcMain.handle('httpserver-start', async (event, config: { port: number }) => {
+  try {
+    if (httpServer && httpServer.getIsRunning()) {
+      await httpServer.stop()
+    }
+
+    const serverConfig: HttpServerConfig = {
+      port: config.port || 8080,
+      publicPath: process.env.VITE_PUBLIC,
+    }
+
+    httpServer = new HttpServer(serverConfig)
+    await httpServer.start()
+
+    return { success: true, port: httpServer.getPort() }
+  }
+  catch (error) {
+    console.error('Failed to start HTTP server:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('httpserver-stop', async () => {
+  try {
+    if (httpServer) {
+      await httpServer.stop()
+      httpServer = null
+    }
+    return { success: true }
+  }
+  catch (error) {
+    console.error('Failed to stop HTTP server:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('httpserver-status', async () => {
+  return {
+    running: httpServer ? httpServer.getIsRunning() : false,
+    port: httpServer ? httpServer.getPort() : null,
+  }
+})
+
+// Broadcast transcription messages to HTTP display clients
+ipcMain.on('httpserver-broadcast', (event, message: string) => {
+  if (httpServer && httpServer.getIsRunning()) {
+    httpServer.broadcast(message)
+  }
+})
+
+// Get network interfaces
+ipcMain.handle('get-network-interfaces', async () => {
+  const networkInterfaces = os.networkInterfaces()
+  const interfaces: Array<{ name: string, address: string, family: string, internal: boolean }> = []
+
+  for (const [name, addresses] of Object.entries(networkInterfaces)) {
+    if (!addresses) continue
+
+    for (const addr of addresses) {
+      // Filter out internal addresses (loopback)
+      if (addr.internal) continue
+
+      // Only include IPv4 and IPv6 addresses
+      if (addr.family === 'IPv4' || addr.family === 'IPv6') {
+        interfaces.push({
+          name,
+          address: addr.address,
+          family: addr.family,
+          internal: addr.internal,
+        })
+      }
+    }
+  }
+
+  return interfaces
 })

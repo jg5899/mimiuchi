@@ -161,6 +161,12 @@ export default {
     connections: {
       title: '连接',
       description: '通过 {icon} 向其他应用发送数据',
+      info: {
+        title: '网络连接信息',
+        description: '其他设备可以使用这些URL进行连接',
+        local_addresses: '本地IP地址',
+        no_interfaces: '未找到网络接口',
+      },
       dialog: {
         title: {
           edit: '更新连接',

@@ -36,6 +36,13 @@ parentPort?.on('message', async (message) => {
       const sourceLang = languageMap[message.data.src_lang] || message.data.src_lang
       const targetLang = languageMap[message.data.tgt_lang] || message.data.tgt_lang
 
+      // Build system message with optional context
+      let systemContent = `You are a professional translator. Translate the following text from ${sourceLang} to ${targetLang}. Preserve religious terms, proper nouns, and maintain the reverent tone appropriate for church services. Return ONLY the translated text, nothing else.`
+
+      if (message.data.context && message.data.context.trim()) {
+        systemContent = `You are a professional translator. Previous context: "${message.data.context}"\n\nTranslate the following text from ${sourceLang} to ${targetLang}. Use the previous context to better understand pronouns, references, and conversational flow. Preserve religious terms, proper nouns, and maintain the reverent tone appropriate for church services. Return ONLY the translated text, nothing else.`
+      }
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -47,7 +54,7 @@ parentPort?.on('message', async (message) => {
           messages: [
             {
               role: 'system',
-              content: `You are a professional translator. Translate the following text from ${sourceLang} to ${targetLang}. Preserve religious terms, proper nouns, and maintain the reverent tone appropriate for church services. Return ONLY the translated text, nothing else.`,
+              content: systemContent,
             },
             {
               role: 'user',

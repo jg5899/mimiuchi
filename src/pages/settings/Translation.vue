@@ -106,6 +106,56 @@
             </v-list-item>
           </v-card>
         </v-col>
+        <v-col v-if="translationStore.type === 'OpenAI'" :cols="12">
+          <v-card flat>
+            <v-list-item>
+              <template #default>
+                <v-list-item-title>
+                  Use Contextual Translation
+                  <v-tooltip location="top">
+                    <template #activator="{ props }">
+                      <v-icon
+                        v-bind="props"
+                        icon="mdi-information"
+                        size="small"
+                        class="ml-1"
+                      />
+                    </template>
+                    <div style="max-width: 300px;">
+                      Provides previous sentences as context for better translation quality.
+                      Improves pronoun resolution and conversational flow.
+                      Note: Uses more API tokens (higher cost).
+                    </div>
+                  </v-tooltip>
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption text-warning">
+                  Better quality, higher cost
+                </v-list-item-subtitle>
+              </template>
+              <template #append>
+                <v-switch
+                  v-model="translationStore.use_context"
+                  color="primary"
+                  hide-details
+                  inset
+                />
+              </template>
+            </v-list-item>
+          </v-card>
+        </v-col>
+        <v-col v-if="translationStore.type === 'OpenAI' && translationStore.use_context" :cols="12">
+          <v-slider
+            v-model="translationStore.context_window_size"
+            :min="1"
+            :max="5"
+            :step="1"
+            label="Context Window Size"
+            hint="Number of previous sentences to include (1-5)"
+            persistent-hint
+            thumb-label
+            show-ticks="always"
+          />
+        </v-col>
       </v-row>
     </v-card-text>
   </v-card>

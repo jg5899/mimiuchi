@@ -12,6 +12,8 @@ export const useTranslationStore = defineStore('translation', () => {
   const download = ref(-1) // percent downloaded 0-100. -1 = done
   const show_original = ref(true)
   const openai_api_key = ref('')
+  const use_context = ref(false)
+  const context_window_size = ref(3)
 
   function onMessageReceived(data: any) {
     const logsStore = useLogsStore()
@@ -53,6 +55,8 @@ export const useTranslationStore = defineStore('translation', () => {
     download,
     show_original,
     openai_api_key,
+    use_context,
+    context_window_size,
     onMessageReceived,
   }
 })

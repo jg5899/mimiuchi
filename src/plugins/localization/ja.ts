@@ -186,6 +186,12 @@ export default {
       action: {
         add: '接続を追加するには{icon}ボタンを使用してください。',
       },
+      info: {
+        title: 'ネットワーク接続情報',
+        description: '他のデバイスはこれらのURLを使用して接続できます',
+        local_addresses: 'ローカルIPアドレス',
+        no_interfaces: 'ネットワークインターフェースが見つかりません',
+      },
       dialog: {
         title: {
           add: '接続の追加',

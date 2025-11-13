@@ -198,6 +198,12 @@ export default {
       action: {
         add: 'Use the {icon} button to add a new connection',
       },
+      info: {
+        title: 'Network Connection Info',
+        description: 'Other devices can connect using these URLs',
+        local_addresses: 'Local IP Addresses',
+        no_interfaces: 'No network interfaces found',
+      },
       dialog: {
         title: {
           add: 'Add connection',
