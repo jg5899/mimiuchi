@@ -6,14 +6,10 @@ import { Worker } from 'node:worker_threads'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 
 import Store from 'electron-store'
-import { WebSocket, WebSocketServer } from 'ws'
 import { check_update } from './modules/check_update.js'
-import { emit_osc, empty_queue } from './modules/osc.js'
-import { initialize_wsserver } from './modules/wsserver.js'
 
 interface Schema {
   'win_bounds': object
-  'auto-open-web-app-on-launch': boolean
 }
 
 const store = new Store<Schema>({
@@ -21,10 +17,6 @@ const store = new Store<Schema>({
     'win_bounds': {
       type: 'object',
       default: {},
-    },
-    'auto-open-web-app-on-launch': {
-      type: 'boolean',
-      default: false,
     },
   },
 })
@@ -154,10 +146,6 @@ function getTransformersWorker(): Worker {
 }
 
 app.whenReady().then(() => {
-  if (store.get('auto-open-web-app-on-launch')) {
-    shell.openExternal('https://mimiuchi.com/')
-  }
-
   createWindow()
 })
 
@@ -216,75 +204,9 @@ ipcMain.on('minimize', () => {
   win.minimize()
 })
 
-// event for text typing indicator
-ipcMain.on('typing-text-event', (event, args) => {
-  emit_osc(['/chatbox/typing', args])
-})
-
-// event for sending text
-let text_queue = []
-ipcMain.on('send-text-event', (event, args) => {
-  args = JSON.parse(args)
-  const new_text = args.transcript.includes(' ') ? args.transcript.match(/.{1,140}(\s|$)/g) : args.transcript.match(/.{1,140}/g)
-  text_queue = [...text_queue, ...new_text]
-  if (text_queue.length >= 1)
-    empty_queue(text_queue, args.hide_ui, args.sfx)
-})
-
-// event for sending osc messages
-ipcMain.on('send-osc-message', (event, args) => {
-  emit_osc([args.route, args.value], args.ip, args.port)
-})
-
-let wsserver: WebSocketServer = null
-// websocket events
-ipcMain.on('start-mimiuchi-websocketserver', (event, args) => {
-  wsserver = new WebSocketServer({ port: args })
-
-  initialize_wsserver(win, wsserver)
-    .then(() => {
-      win.webContents.send('mimiuchi-websocketserver-started')
-    })
-    .catch((error) => {
-      win.webContents.send('mimiuchi-websocketserver-error', error)
-    })
-})
-
-ipcMain.on('close-mimiuchi-websocketserver', () => {
-  if (!wsserver) return
-
-  win.webContents.send('mimiuchi-websocketserver-close')
-
-  wsserver.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN)
-      client.close(1001, 'mimiuchi WebSocket server shut down.')
-  })
-
-  wsserver.close(() => {
-    win.webContents.send('mimiuchi-websocketserver-closed')
-  })
-
-  wsserver.removeAllListeners()
-
-  wsserver = null
-})
-
 ipcMain.on('update-check', async () => {
   const latest = await check_update()
   win.webContents.send('update-check', latest)
-})
-
-// Setting: Open web app on app launch
-ipcMain.handle('get-auto-open-web-app-on-launch', () => {
-  return store.get('auto-open-web-app-on-launch', false)
-})
-
-ipcMain.on('set-auto-open-web-app-on-launch', (event, newValue) => {
-  store.set('auto-open-web-app-on-launch', newValue)
-})
-
-ipcMain.on('delete-auto-open-web-app-on-launch', () => {
-  store.delete('auto-open-web-app-on-launch')
 })
 
 // Translations

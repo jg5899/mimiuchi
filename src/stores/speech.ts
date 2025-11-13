@@ -4,7 +4,6 @@ import { useSettingsStore } from './settings'
 import { useDefaultStore } from '@/stores/default'
 import { useLogsStore } from '@/stores/logs'
 import { useAppearanceStore } from '@/stores/appearance'
-import { useOSCStore } from '@/stores/osc'
 import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
 import { useWordReplaceStore } from '@/stores/word_replace'
@@ -271,15 +270,6 @@ export const useSpeechStore = defineStore('speech', () => {
       const wsPayload = JSON.stringify(logsStore.logs[input_index])
       const rendered_payload = `{"type": "text", "data": ${wsPayload}}`
 
-      if (connectionsStore.open.mimiuchi_websocket)
-        connectionsStore.open.mimiuchi_websocket.send(rendered_payload)
-
-      if (connectionsStore.open.obs_websocket) {
-        (async () => {
-          await connectionsStore.obs_set_text(logsStore.logs[input_index].transcript)
-        })()
-      }
-
       for (const openConnection of connectionsStore.open.user_websockets) {
         if (openConnection) openConnection.send(rendered_payload)
       }
@@ -357,7 +347,6 @@ export const useSpeechStore = defineStore('speech', () => {
     const connectionsStore = useConnectionsStore()
     const defaultStore = useDefaultStore()
     const logsStore = useLogsStore()
-    const oscStore = useOSCStore()
     const settingsStore = useSettingsStore()
     const translationStore = useTranslationStore()
     const { replace_words } = useWordReplaceStore()
@@ -381,9 +370,6 @@ export const useSpeechStore = defineStore('speech', () => {
     const loglist = document.getElementById('loglist')
     if (loglist)
       loglist.scrollTop = loglist.scrollHeight
-
-    if (is_electron() && oscStore.osc_text && oscStore.stt_typing && defaultStore.broadcasting)
-      typing_event(true)
 
     let i = logsStore.logs.length - 1 // track current index
     if ((i >= 0 && !logsStore.logs[i].isFinal) || log.translation) {
@@ -463,45 +449,17 @@ export const useSpeechStore = defineStore('speech', () => {
       }
     }
 
-    // send text via osc
-    if (defaultStore.broadcasting) {
-      if (is_electron() && oscStore.osc_text) {
-        if (log.isTranslationFinal && log.translation) {
-          const transcript = (translationStore.show_original) ? `${log.transcript} (${log.translation})` : log.translation
-          const data = {
-            transcript,
-            hide_ui: !oscStore.show_keyboard,
-            sfx: oscStore.sfx,
-          }
-          window.ipcRenderer.send('send-text-event', JSON.stringify(data))
-        }
-        else if (log.isFinal && !log.translate) {
-          const data = {
-            transcript: log.transcript,
-            hide_ui: !oscStore.show_keyboard,
-            sfx: oscStore.sfx,
-          }
-          window.ipcRenderer.send('send-text-event', JSON.stringify(data))
-        }
+    // send text via WebSockets and webhooks
+    if (defaultStore.broadcasting && !settingsStore.realtime_text) {
+      const wsPayload = JSON.stringify(log)
+
+      // Send to user WebSockets
+      for (const openConnection of connectionsStore.open.user_websockets) {
+        if (openConnection) openConnection.send(`{"type": "text", "data": ${wsPayload}}`)
       }
-      else if (!settingsStore.realtime_text) {
-        const wsPayload = JSON.stringify(log)
 
-        // Send to mimiuchi desktop application
-        if (connectionsStore.open.mimiuchi_websocket)
-          connectionsStore.open.mimiuchi_websocket.send(`{"type": "text", "data": ${wsPayload}}`)
-
-        // Send to Open Broadcaster Software (OBS) WebSocket
-        await connectionsStore.obs_set_text(log.transcript)
-
-        // Send to user WebSockets
-        for (const openConnection of connectionsStore.open.user_websockets) {
-          if (openConnection) openConnection.send(`{"type": "text", "data": ${wsPayload}}`)
-        }
-
-        // Post to user webhooks
-        post_to_user_webhooks(log.transcript, true)
-      }
+      // Post to user webhooks
+      post_to_user_webhooks(log.transcript, true)
     }
   }
 

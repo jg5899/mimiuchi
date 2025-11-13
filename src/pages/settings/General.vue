@@ -48,26 +48,6 @@
           </v-card>
         </v-col>
       </v-row>
-      <v-row v-if="is_electron()">
-        <v-col :cols="12" :md="12" class="pb-0">
-          <v-card>
-            <v-list-item>
-              <v-list-item-title>
-                {{ t('settings.general.auto_open_web_app') }}
-              </v-list-item-title>
-              <template #append>
-                <v-switch
-                  v-model="auto_open_web_app_on_launch"
-                  color="primary"
-                  hide-details
-                  inset
-                  @change="set_auto_open_web_app_on_launch()"
-                />
-              </template>
-            </v-list-item>
-          </v-card>
-        </v-col>
-      </v-row>
       <v-row class="mt-12" />
       <v-row>
         <v-col :cols="12" class="pb-0">
@@ -153,7 +133,6 @@ import { useSpeechStore } from '@/stores/speech'
 import { useConnectionsStore } from '@/stores/connections'
 import { useLogsStore } from '@/stores/logs'
 import { useTranslationStore } from '@/stores/translation'
-import { useOSCStore } from '@/stores/osc'
 import { useDefaultStore } from '@/stores/default'
 
 const { t } = useI18n()
@@ -169,7 +148,6 @@ const word_replace = ref(true)
 const speech = ref(true)
 const connection = ref(true)
 const translation = ref(true)
-const osc = ref(true)
 
 const appearanceStore = useAppearanceStore()
 const wordReplaceStore = useWordReplaceStore()
@@ -179,24 +157,8 @@ const connectionsStore = useConnectionsStore()
 const defaultStore = useDefaultStore()
 const logsStore = useLogsStore()
 const translationStore = useTranslationStore()
-const oscStore = useOSCStore()
 
 const router = useRouter()
-const auto_open_web_app_on_launch = ref(false) // Stores the display value for UI. The source of truth is in the Electron store
-
-onMounted(() => {
-  if (is_electron())
-    sync_auto_open_web_app_on_launch()
-})
-
-async function sync_auto_open_web_app_on_launch() {
-  const value = await window.ipcRenderer.invoke('get-auto-open-web-app-on-launch')
-  auto_open_web_app_on_launch.value = value
-}
-
-function set_auto_open_web_app_on_launch() {
-  window.ipcRenderer.send('set-auto-open-web-app-on-launch', auto_open_web_app_on_launch.value)
-}
 
 function reset_settings() {
   function reset(store: any) {
@@ -212,23 +174,12 @@ function reset_settings() {
 
   if (defaultStore.broadcasting) connectionsStore.toggle_broadcast()
 
-  if (is_electron())
-    window.ipcRenderer.send('delete-auto-open-web-app-on-launch')
-
   if (appearance.value) reset(appearanceStore)
   if (word_replace.value) reset(wordReplaceStore)
   if (settings.value) reset(settingsStore)
   if (speech.value) reset(speechStore)
-  if (connection.value) {
-    reset(connectionsStore)
-
-    if (is_electron()) {
-      connectionsStore.disconnect_mimiuchi_websocketserver()
-      connectionsStore.connect_mimiuchi_websocketserver()
-    }
-  }
+  if (connection.value) reset(connectionsStore)
   if (translation.value) reset(translationStore)
-  if (osc.value) reset(oscStore)
 
   reset_dialog.value = false
   snackbar_text.value = t('settings.general.reset.snackbar.title')

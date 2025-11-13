@@ -19,7 +19,6 @@ import { useSettingsStore } from '@/stores/settings'
 import { useSpeechStore } from '@/stores/speech'
 import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
-import { useOSCStore } from '@/stores/osc'
 import { global_langs } from '@/plugins/i18n'
 
 import is_electron from '@/helpers/is_electron'
@@ -37,7 +36,6 @@ const wordReplaceStore = useWordReplaceStore()
 const translationStore = useTranslationStore()
 const settingsStore = useSettingsStore()
 const connectionsStore = useConnectionsStore()
-const oscStore = useOSCStore()
 
 const router = useRouter()
 
@@ -62,9 +60,6 @@ translationStore.$subscribe((_, state) => {
 connectionsStore.$subscribe((_, state) => {
   localStorage.setItem('connections', JSON.stringify(state))
 })
-oscStore.$subscribe((_, state) => {
-  localStorage.setItem('osc', JSON.stringify(state))
-})
 
 appearanceStore.$patch(JSON.parse(localStorage.getItem('appearance') || '{}'))
 speechStore.$patch(JSON.parse(localStorage.getItem('speech') || '{}'))
@@ -72,7 +67,6 @@ settingsStore.$patch(JSON.parse(localStorage.getItem('settings') || '{}'))
 wordReplaceStore.$patch(JSON.parse(localStorage.getItem('word_replace') || '{}'))
 translationStore.$patch(JSON.parse(localStorage.getItem('translation') || '{}'))
 connectionsStore.$patch(JSON.parse(localStorage.getItem('connections') || '{}'))
-oscStore.$patch(JSON.parse(localStorage.getItem('osc') || '{}'))
 
 // Migration code – start
 if (settingsStore.config_version < 1) {
@@ -84,13 +78,8 @@ if (settingsStore.config_version < 1) {
 settingsStore.languages = global_langs
 
 onUnmounted(() => {
-  if (is_electron())
-    connectionsStore.disconnect_mimiuchi_websocketserver()
 })
 onMounted(() => {
-  if (is_electron() && connectionsStore.core_mimiuchi_websocketserver.enabled)
-    connectionsStore.connect_mimiuchi_websocketserver()
-
   locale.value = settingsStore.language
   settingsStore.$subscribe((language, state) => {
     locale.value = settingsStore.language

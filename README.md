@@ -4,51 +4,41 @@
 
 # mimiuchi: speech-to-text
 
-mimiuchi is a free, customizable, OSC capable, speech-to-text application for displaying text or relaying it to other applications like OBS or VRChat. Its customizable text window is also designed to be paired with applications like OBS. It runs on the web, with little setup required beyond customization. You can try it out right now at [mimiuchi.com](https://mimiuchi.com/) with Chrome, Safari, or Edge. UI currently supports English, Spanish (España), Japanese (日本語), and Chinese (简体中文)！
+mimiuchi is a free, customizable desktop speech-to-text application with real-time translation and WebSocket streaming capabilities. Stream transcriptions and translations to any device on your network via WebSocket or webhooks. UI currently supports English, Spanish (España), Japanese (日本語), and Chinese (简体中文)！
 
 ### Features
 
-- Speech-to-text
-- Text-to-speech
-- On-device translations
-- OBS websocket support
-- OSC broadcasting (for apps like VRChat)
-- Custom OSC param execution via language triggers ("turn my marker on" -> `/avatar/parameter/Marker True`)
-- ...and many settings to customize the experience!
+- **Speech-to-Text** - Web Speech API (free), Deepgram, or Whisper (OpenAI)
+- **Text-to-Speech** - TikTok, Web Speech API, or Yukumo
+- **Real-time Translation** - On-device (Transformers.js) or OpenAI API with multi-language support
+- **Speaker Profiles** - Custom vocabulary and context prompts for specialized domains
+- **WebSocket Streaming** - Stream transcriptions to any device on your network
+- **Webhooks** - POST transcriptions to custom endpoints
+- **Customizable UI** - Extensive text appearance and behavior settings
 
 ## How to use
 
-### Speech-to-Text
-
-Simply go to [mimiuchi.com](https://mimiuchi.com/) and press the mic button! You will need to grant access the first time you do it. Currently, mimiuchi uses [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) to perform speech-to-text, which is only supported on the web version. You [can read more about it below](#web-speech-api). In the future I will support more options.
-
-### Using OSC
-
-Click the broadcast button to toggle OSC. Due to how VRChat OSC works, this will require the desktop app version which you can download [here](https://github.com/naeruru/mimiuchi/releases/). If you're using speech-to-text, the web version can relay all speech-to-text to the deskop app when broadcasting is on.
-
-### Everything together
-
-Running both applications at once, you simply toggle on the `MIC` and `BROADCAST` button on the web app. it will then toggle the desktop on with it.
-
-website -> desktop
-
-![mimiuchi-ws_example](https://github.com/naeruru/mimiuchi/assets/9059594/4a85352f-7183-448e-931e-0ab07054231e)
-
-website -> desktop -> VRChat
-
-![mimiuchi-vrchat_example](https://github.com/naeruru/mimiuchi/assets/9059594/666900a9-d176-4c39-a5dd-6a320a46cd8c)
+1. **Download** the desktop application from the [releases page](https://github.com/naeruru/mimiuchi/releases/)
+2. **Configure** your STT engine (Web Speech API is free and requires no setup)
+3. **Optional**: Add API keys for advanced features (Deepgram, Whisper, OpenAI Translation)
+4. **Click** the MIC button to start transcription
+5. **Stream** transcriptions to other devices by enabling broadcast and connecting to the displayed WebSocket URL
 
 # Additional info
 
 ### Why?
 
-I support the idea of people having many ways to communicate and do things. It is important to give people those tools and make them easily accessible. This app will give another way for people to display text in different applications like OBS or VRC. It is free and focused on privacy as an end goal. An example of a very similar application is [web captioner](https://webcaptioner.com/). However, I want to expand upon it and make this version unique!
+I support the idea of people having many ways to communicate and do things. It is important to give people those tools and make them easily accessible. This app provides powerful speech-to-text with translation capabilities that can be streamed to any application or device. It's free, focused on privacy, and designed to be flexible for various use cases - from accessibility tools to live streaming, church services, or presentations.
 
-## Web Speech API
+## STT Engines
 
-mimiuchi uses [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) to perform speech-to-text, which is a [browser dependent](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API#browser_compatibility) API. Most browsers, like Chrome or Edge, will upload your audio to GCP or Azure respectively to have it processed, while the webpage never gets direct access to it. For example, you can read about Chrome's privacy pertaining to it [here](https://www.google.com/chrome/privacy/whitepaper.html#speech). I chose Web Speech API because it is completely free and requires no accounts to access. Unfortunately, its free use is disabled in electron's chromium, so this means speech-to-text in this form can only run in the browser. This adds slight complexity when you want to interface with local applications like VRChat by requiring a "middle application" to relay the text back and forth. Still, I think that this approach is worth it as it provides a free way to use powerful speech-to-text models for people who dont have the means to pay.
+mimiuchi supports multiple speech-to-text engines:
 
-In the future, I would like to support a standalone desktop experience, but this is currently on hold till I figure out how popular this might be.
+- **Web Speech API (Free)**: Built-in browser STT, requires no API keys. Chrome uses Google's servers, Edge uses Azure.
+- **Deepgram**: Professional-grade STT with custom vocabulary support. Requires API key.
+- **Whisper (OpenAI)**: High-accuracy STT with GPT-4o post-processing option. Requires API key.
+
+Each engine has trade-offs between cost, accuracy, latency, and privacy. Choose based on your needs.
 
 ## Todo
 
@@ -57,24 +47,21 @@ in no particular order...
 - more customization for text window
 - ~~better intermediate text results~~ ✅
 - ~~text-to-speech~~ ✅
-- more TTS/STT options (for standalone desktop experience)
-- VRChat text shader support (sending character data to float params)
+- more TTS/STT options
 - ~~add ability to export settings/transcripts~~✅
 - ~~better webkit/safari support~~✅
-- ~~OBS websocket and 'text source' support~~
-- option for second 'control panel' type screen with focus on quick switching between settings
-- better generic osc support
 - ~~translation support~~✅
-- ~~webhook/websocket customization to connect to other apps that aren't related to me~~✅
+- ~~webhook/websocket customization to connect to other apps~~✅
+- ~~speaker profiles with custom vocabulary~~✅
 - documentation
-- steamvr integration
-- continuous text transmission option for VRChat
+- built-in HTTP server for display clients
+- connection info UI with QR codes
 - locally run whisper c++ bindings / WebGPU based inference
   - this point is really important to me, because I want a truly low latency private STT system. but.. I want to make sure I do it the right way, such that it can work entirely in the browser, utilizing the full power of your GPU or CPU, completely local and with minimal latency. A lot of this is very new, so it may take some time to iron it out. the first versions of it may differ greatly from the end goal.
 
 ## Download
 
-See the [release page](https://github.com/naeruru/mimiuchi/releases) to install the latest version of the desktop app. The desktop version lets you use additional features like OSC.
+See the [release page](https://github.com/naeruru/mimiuchi/releases) to install the latest version of the desktop app.
 
 ## Building it yourself
 

@@ -22,7 +22,7 @@
             </v-col>
             <v-col :cols="12" class="d-flex justify-center text-center px-8">
               <span
-                v-if="(['websocket', 'obs'] as ConnectionTypes[]).includes(new_connection.type)"
+                v-if="(new_connection.type === 'websocket')"
                 class="text-subtitle-1"
               >
                 {{ t('settings.connections.dialog.description.websocket') }}
@@ -83,44 +83,6 @@
               />
             </v-col>
           </v-row>
-          <!-- Open Broadcaster Software (OBS) WebSocket settings -->
-          <v-row v-if="!is_electron() && new_connection.type === 'obs'">
-            <v-col :cols="8">
-              <v-text-field
-                v-model="new_connection.obs!.address"
-                :label="t('settings.connections.dialog.field.address')"
-                prefix="ws://"
-                placeholder="127.0.0.1"
-                hide-details
-                :rules="[rules.requiredField]"
-              />
-            </v-col>
-            <v-col :cols="4">
-              <v-number-input
-                v-model="new_connection.obs!.port"
-                v-bind="port_number_input_attributes"
-                hide-details
-                placeholder="4455"
-              />
-            </v-col>
-            <v-col :cols="12">
-              <v-text-field
-                v-model="new_connection.obs!.password"
-                :label="t('settings.connections.dialog.field.password')"
-                hide-details
-                :placeholder="t('settings.connections.dialog.field.password_placeholder')"
-                persistent-placeholder
-              />
-            </v-col>
-            <v-col :cols="12">
-              <v-text-field
-                v-model="new_connection.obs!.source_text"
-                :label="t('settings.connections.dialog.field.text_source_name')"
-                hide-details
-                :rules="[rules.requiredField]"
-              />
-            </v-col>
-          </v-row>
           <!-- Webhook settings -->
           <v-row v-if="!is_electron() && new_connection.type === 'webhook'">
             <v-col>
@@ -175,7 +137,6 @@
 <script setup lang="ts">
 import { nextTick, ref, toRaw, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type OBSWebSocket from 'obs-websocket-js'
 import is_electron from '@/helpers/is_electron'
 import type { ConnectionTypes, TypeDisplayData } from '@/stores/connections'
 import { Connection, PropsWebSocket, PropsWebhook, useConnectionsStore } from '@/stores/connections'
@@ -269,24 +230,6 @@ function set_connection_type() {
 function confirm_edit_connection() {
   const defaultStore = useDefaultStore()
   const connection_is_open = defaultStore.broadcasting && props.connection.enabled
-
-  if (new_connection.value.type === 'obs') {
-    connectionsStore.core_obs = new_connection.value
-
-    if (connection_is_open) {
-      const connection_to_reconnect = connectionsStore.open.obs_websocket
-
-      const function_connect = () => {
-        connectionsStore.connect_obs()
-      }
-
-      const function_disconnect = () => {
-        connectionsStore.disconnect_obs()
-      }
-
-      if (connection_to_reconnect) connectionsStore.reconnect_websocket(connection_to_reconnect as OBSWebSocket, function_connect, function_disconnect)
-    }
-  }
 
   if (new_connection.value.type === 'websocket') {
     if (is_user_connection.value) {

@@ -164,7 +164,6 @@ import { useDefaultStore } from '@/stores/default'
 import type { Log } from '@/stores/logs'
 import { useLogsStore } from '@/stores/logs'
 import { useSettingsStore } from '@/stores/settings'
-import { useOSCStore } from '@/stores/osc'
 import { useSpeechStore } from '@/stores/speech'
 import { useTranslationStore } from '@/stores/translation'
 import { useSpeakerProfilesStore } from '@/stores/speaker_profiles'
@@ -183,7 +182,6 @@ const appearanceStore = useAppearanceStore()
 const connectionsStore = useConnectionsStore()
 const defaultStore = useDefaultStore()
 const logsStore = useLogsStore()
-const oscStore = useOSCStore()
 const settingsStore = useSettingsStore()
 const speechStore = useSpeechStore()
 const translationStore = useTranslationStore()
@@ -203,9 +201,6 @@ const last_setting = computed(() => {
 })
 
 watch(input_text, () => {
-  if (oscStore.osc_text && oscStore.text_typing && defaultStore.broadcasting)
-    typing_event(true)
-
   if (input_index.value === null) {
     input_index.value = logsStore.logs.length
   }
@@ -230,34 +225,6 @@ onMounted(() => {
   reloadEvents()
 
   if (is_electron()) {
-    // Connections
-    window.ipcRenderer.on('mimiuchi-websocketserver-started', () => {
-      console.log(`Starting mimiuchi WebSocket server... (Listening on port ${connectionsStore.core_mimiuchi_websocketserver.websocketserver?.port})`)
-    })
-
-    window.ipcRenderer.on('mimiuchi-websocketserver-close', () => {
-      console.log('Closing mimiuchi WebSocket server...')
-    })
-
-    window.ipcRenderer.on('mimiuchi-websocketserver-closed', () => {
-      console.log('Closed mimiuchi WebSocket server.')
-    })
-
-    window.ipcRenderer.on('mimiuchi-websocketserver-error', (event: any, data: any) => {
-      console.error(data)
-    })
-
-    window.ipcRenderer.on('mimiuchi-websocketserver-client-connected', (event: any, arg1: any, arg2: any) => {
-      defaultStore.broadcasting = arg1
-      console.log(`A WebSocket client connected. (${arg2})`)
-    })
-
-    window.ipcRenderer.on('mimiuchi-websocketserver-client-disconnected', (event: any, arg1: any, arg2: any) => {
-      defaultStore.broadcasting = arg1
-      console.log(`A WebSocket client disconnected. (${arg2.ip})`)
-      console.log(`Code: ${arg2.code}. Reason: ${arg2.reason}`)
-    })
-
     // Speech
     window.ipcRenderer.on('transformers-translate-render', (event: any, data: any) => {
       translationStore.onMessageReceived(data)
@@ -278,15 +245,7 @@ onUnmounted(() => {
     connectionsStore.toggle_broadcast()
 
   if (is_electron()) {
-    // Connections
-    window.ipcRenderer.removeListener('mimiuchi-websocketserver-started')
-    window.ipcRenderer.removeListener('mimiuchi-websocketserver-closed')
-    window.ipcRenderer.removeListener('mimiuchi-websocketserver-error')
-    window.ipcRenderer.removeListener('mimiuchi-websocketserver-client-connected')
-    window.ipcRenderer.removeListener('mimiuchi-websocketserver-client-disconnected')
-
     // Speech
-    window.ipcRenderer.removeListener('receive-text-event')
     window.ipcRenderer.removeListener('transformers-translate-render')
   }
 })
@@ -328,62 +287,6 @@ function typing_event(event: boolean) {
   speechStore.typing_event(event)
 }
 
-function match_osc_trigger(input: string) {
-  // console.log(window.process.type)
-  if (defaultStore.broadcasting && is_electron()) {
-    // potential addition:
-    // use https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/search
-    // to see which assign is the closest to the keyword found
-    // unless switch to nlp first.....
-    if (oscStore.osc_profiles[oscStore.current_profile].length) {
-      oscStore.osc_profiles[oscStore.current_profile].forEach((trigger) => {
-        let matchesKey: RegExpExecArray | null = null
-
-        trigger.keywords.forEach((keyword) => {
-          if (matchesKey)
-            return
-
-          const key_check = `(^|\\s)(${keyword.text})($|[^a-zA-Z\\d])`
-          const reKey = new RegExp(key_check, 'gi')
-          matchesKey = reKey.exec(input)
-        })
-
-        if (matchesKey) {
-          trigger.assigns.forEach((assign) => {
-            const assign_check = `(^|\\s)(${assign.keyword})($|[^a-zA-Z\\d])`
-            const reAssign = new RegExp(assign_check, 'gi')
-            const matchesAssign = reAssign.exec(input)
-            if (matchesAssign) {
-              show_snackbar('secondary', `<code>${trigger.route} = ${assign.value_to_set1}</code>`)
-
-              window.ipcRenderer.send('send-osc-message', {
-                ip: trigger.ip,
-                port: trigger.port,
-                route: trigger.route,
-                value: assign.value_to_set1,
-              })
-
-              if (assign.behavior === 'pulse') {
-                // The value should reset after some time.
-                setTimeout(() => {
-                  show_snackbar('secondary', `<code>${trigger.route} = ${assign.value_to_set2}</code>`)
-
-                  window.ipcRenderer.send('send-osc-message', {
-                    ip: trigger.ip,
-                    port: trigger.port,
-                    route: trigger.route,
-                    value: assign.value_to_set2,
-                  })
-                }, assign.pulse_duration)
-              }
-            }
-          })
-        }
-      })
-    }
-  }
-}
-
 async function onSubmit(log: Log | null = null) {
   if (log && !log.transcript)
     return
@@ -397,9 +300,6 @@ async function onSubmit(log: Log | null = null) {
       hide: 0, // 1 = fade, 2 = hide
     }
   }
-
-  if (log && log.isFinal)
-    match_osc_trigger(log.transcript)
 
   speechStore.on_submit(log, input_index.value ?? Math.max(logsStore.logs.length - 1, 0))
 
@@ -419,13 +319,5 @@ function onResize() {
 }
 
 function reloadEvents() {
-  if (is_electron()) {
-    window.ipcRenderer.removeListener('websocket-connect')
-    window.ipcRenderer.removeListener('receive-text-event')
-    window.ipcRenderer.on('receive-text-event', (event: any, data: any) => {
-      const parsedData = JSON.parse(data)
-      onSubmit(parsedData)
-    })
-  }
 }
 </script>

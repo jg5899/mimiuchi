@@ -8,7 +8,7 @@ export default {
     },
     controls: {
       title: '控制',
-      broadcast: '切换 OSC 广播（需要桌面应用）',
+      broadcast: '切换广播（需要桌面应用）',
       mic: '切换语音转文本功能（需要浏览器权限）',
       settings: '打开设置面板',
       button: '关闭',
@@ -169,82 +169,6 @@ export default {
           websocket: '通过 WebSocket 实时发送文本更新',
           webhook: '通过 Webhook POST 请求发送文本更新',
         },
-      },
-    },
-    osc: {
-      title: 'VRChat',
-      general: {
-        title: '通用设置',
-        description: '自定义 OSC 连接的设置',
-        osc_ip: 'OSC IP',
-        osc_port: 'OSC 端口',
-        enabled: '启用 OSC 广播（广播时发送所有文本）',
-        show_keyboard: '发送文本时在 VRChat 中显示键盘',
-        sfx: '发送文本后播放音效',
-        typing_indicator_speech: '为语音转文本启用输入指示器',
-        typing_indicator_keyboard: '启用输入指示器',
-        typing_indicator_icon: 'mdi-message-processing',
-        unsupported: {
-          text: '要使用 OSC，您需要使用 {link}。安装后，可以将网页版本和桌面版本与 {icon} 按钮配合使用。{kaomoji}',
-          link: '桌面应用',
-          icon: 'mdi-broadcast',
-          kaomoji: '(ᐡᴗ ̫ ᴗᐡ)',
-        },
-      },
-      triggers: {
-        title: '参数触发器',
-        description: '添加参数触发器',
-        button: {
-          cancel: '取消',
-          confirm: '确认',
-          add: '添加',
-          delete: '删除',
-        },
-        profile: {
-          label: '选择一个配置文件',
-          dialog: {
-            title: {
-              add: '添加新配置文件',
-              edit: '重命名配置文件',
-            },
-            field_label: '配置文件名称',
-          },
-          delete_dialog: {
-            title: '删除配置文件',
-            text: '您确定要删除此配置文件吗？',
-          },
-        },
-        trigger: {
-          button: {
-            edit: '编辑',
-            delete: '删除',
-          },
-          dialog_title: {
-            add: '添加参数触发器',
-            edit: '编辑参数触发器',
-          },
-          address: '参数地址',
-          empty: '暂无内容 :c',
-          trigger_phrases: '触发短语：',
-          trigger_phrases_add: '添加触发词/短语',
-          assign: {
-            phrases: '分配短语：',
-            phrases_type: '值类型',
-            phrases_value: '值 ',
-            phrases_add: '添加分配词/短语（例如：on）',
-            behavior: '行为',
-            behavior_options: {
-              default: '默认',
-              pulse: '脉冲',
-              pulse_wait: '等待',
-            },
-          },
-          delete_dialog: {
-            title: '删除参数',
-            text: '您确定要删除此参数吗？',
-          },
-        },
-        empty: '使用 {icon} 按钮添加新的自定义参数触发器！',
       },
     },
   },
