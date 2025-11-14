@@ -452,15 +452,16 @@ export const useSpeechStore = defineStore('speech', () => {
     // send text via WebSockets and webhooks
     if (defaultStore.broadcasting && !settingsStore.realtime_text) {
       const wsPayload = JSON.stringify(log)
+      const fullMessage = `{"type": "text", "data": ${wsPayload}}`
 
       // Send to user WebSockets
       for (const openConnection of connectionsStore.open.user_websockets) {
-        if (openConnection) openConnection.send(`{"type": "text", "data": ${wsPayload}}`)
+        if (openConnection) openConnection.send(fullMessage)
       }
 
       // Broadcast to HTTP server display clients
       if (is_electron()) {
-        window.ipcRenderer.send('httpserver-broadcast', wsPayload)
+        window.ipcRenderer.send('httpserver-broadcast', fullMessage)
       }
 
       // Post to user webhooks

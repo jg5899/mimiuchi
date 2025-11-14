@@ -4,16 +4,18 @@
 
 # mimiuchi: speech-to-text
 
-mimiuchi is a free, customizable desktop speech-to-text application with real-time translation and WebSocket streaming capabilities. Stream transcriptions and translations to any device on your network via WebSocket or webhooks. UI currently supports English, Spanish (España), Japanese (日本語), and Chinese (简体中文)！
+mimiuchi is a free, customizable desktop speech-to-text application with real-time translation and streaming capabilities. Stream transcriptions and translations to any device on your network via WebSocket, HTTP server, or webhooks. UI supports 11 languages: English, Spanish, Japanese, Chinese, Romanian, Ukrainian, Russian, French, German, Portuguese, and Italian!
 
 ### Features
 
 - **Speech-to-Text** - Web Speech API (free), Deepgram, or Whisper (OpenAI)
 - **Text-to-Speech** - TikTok, Web Speech API, or Yukumo
-- **Real-time Translation** - On-device (Transformers.js) or OpenAI API with multi-language support
+- **Real-time Translation** - On-device (Transformers.js) or OpenAI API with contextual translation support
 - **Speaker Profiles** - Custom vocabulary and context prompts for specialized domains
+- **HTTP Display Server** - Built-in server streams transcriptions to any browser on port 8080 (configurable)
 - **WebSocket Streaming** - Stream transcriptions to any device on your network
 - **Webhooks** - POST transcriptions to custom endpoints
+- **Connection Info with QR Codes** - Easy setup for mobile devices with auto-generated QR codes
 - **Customizable UI** - Extensive text appearance and behavior settings
 
 ## How to use
@@ -53,9 +55,10 @@ in no particular order...
 - ~~translation support~~✅
 - ~~webhook/websocket customization to connect to other apps~~✅
 - ~~speaker profiles with custom vocabulary~~✅
+- ~~built-in HTTP server for display clients~~✅
+- ~~connection info UI with QR codes~~✅
 - documentation
-- built-in HTTP server for display clients
-- connection info UI with QR codes
+- integration tests
 - locally run whisper c++ bindings / WebGPU based inference
   - this point is really important to me, because I want a truly low latency private STT system. but.. I want to make sure I do it the right way, such that it can work entirely in the browser, utilizing the full power of your GPU or CPU, completely local and with minimal latency. A lot of this is very new, so it may take some time to iron it out. the first versions of it may differ greatly from the end goal.
 

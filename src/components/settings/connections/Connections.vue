@@ -53,6 +53,21 @@
                 />
               </template>
             </v-list-item>
+            <!-- Port Configuration -->
+            <v-card-text v-if="!httpServerRunning">
+              <v-text-field
+                v-model.number="httpServerStore.port"
+                type="number"
+                label="Port"
+                :min="1024"
+                :max="65535"
+                :rules="portRules"
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+                hint="Port number (1024-65535)"
+              />
+            </v-card-text>
           </v-card>
         </v-col>
       </v-row>
@@ -193,6 +208,13 @@ const httpServerEnabled = ref(false)
 const httpServerRunning = ref(false)
 const httpServerPort = ref(8080)
 
+// Port validation rules
+const portRules = [
+  (v: number) => !!v || 'Port is required',
+  (v: number) => (v >= 1024 && v <= 65535) || 'Port must be between 1024 and 65535',
+  (v: number) => Number.isInteger(v) || 'Port must be a whole number',
+]
+
 function display_subtitle(currentConnectionType: string) {
   return connectionsStore.types[currentConnectionType].display
 }
@@ -249,9 +271,21 @@ async function toggleHttpServer() {
         httpServerRunning.value = true
         httpServerPort.value = result.port
         httpServerStore.enabled = true
+        defaultStore.show_snackbar('success', `HTTP server started on port ${result.port}`)
       } else {
         console.error('Failed to start HTTP server:', result.error)
         httpServerEnabled.value = false
+
+        // Show user-friendly error message
+        let errorMsg = 'Failed to start HTTP server'
+        if (result.error.includes('EADDRINUSE')) {
+          errorMsg = `Port ${httpServerStore.port} is already in use. Please choose a different port.`
+        } else if (result.error.includes('EACCES')) {
+          errorMsg = `Port ${httpServerStore.port} requires administrator privileges. Please use a port above 1024.`
+        } else {
+          errorMsg = `Failed to start server: ${result.error}`
+        }
+        defaultStore.show_snackbar('error', errorMsg)
       }
     } else {
       // Stop server
@@ -259,14 +293,17 @@ async function toggleHttpServer() {
       if (result.success) {
         httpServerRunning.value = false
         httpServerStore.enabled = false
+        defaultStore.show_snackbar('info', 'HTTP server stopped')
       } else {
         console.error('Failed to stop HTTP server:', result.error)
         httpServerEnabled.value = true
+        defaultStore.show_snackbar('error', `Failed to stop server: ${result.error}`)
       }
     }
   } catch (error) {
     console.error('HTTP server toggle error:', error)
     httpServerEnabled.value = !httpServerEnabled.value
+    defaultStore.show_snackbar('error', 'An unexpected error occurred')
   }
 }
 

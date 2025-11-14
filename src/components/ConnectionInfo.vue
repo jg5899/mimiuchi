@@ -28,6 +28,14 @@
               icon
               size="small"
               variant="text"
+              @click="showQRCode(url)"
+            >
+              <v-icon size="small">mdi-qrcode</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              size="small"
+              variant="text"
               @click="copyToClipboard(url)"
             >
               <v-icon size="small">
@@ -53,6 +61,14 @@
               {{ url }}
             </v-list-item-title>
             <template #append>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                @click="showQRCode(url)"
+              >
+                <v-icon size="small">mdi-qrcode</v-icon>
+              </v-btn>
               <v-btn
                 icon
                 size="small"
@@ -100,6 +116,36 @@
         </v-list-item>
       </v-list>
     </v-card-text>
+
+    <!-- QR Code Dialog -->
+    <v-dialog v-model="qrDialog" max-width="400">
+      <v-card>
+        <v-card-title class="text-h6">
+          QR Code
+        </v-card-title>
+        <v-card-text class="text-center">
+          <img
+            v-if="qrCodeData"
+            :src="qrCodeData"
+            alt="QR Code"
+            style="width: 100%; max-width: 256px;"
+          >
+          <p class="text-caption mt-4 font-mono">
+            {{ qrCodeUrl }}
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            @click="qrDialog = false"
+          >
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
@@ -110,6 +156,7 @@ import { useDefaultStore } from '@/stores/default'
 import { useConnectionsStore } from '@/stores/connections'
 import { getLocalIpAddresses, getConnectionUrls, type NetworkInterface } from '@/helpers/network'
 import is_electron from '@/helpers/is_electron'
+import QRCode from 'qrcode'
 
 const { t } = useI18n()
 const defaultStore = useDefaultStore()
@@ -119,6 +166,9 @@ const networkInterfaces = ref<NetworkInterface[]>([])
 const websocketUrls = ref<string[]>([])
 const httpUrls = ref<string[]>([])
 const copiedUrl = ref<string | null>(null)
+const qrDialog = ref(false)
+const qrCodeUrl = ref('')
+const qrCodeData = ref('')
 
 // Show connection info when broadcasting is enabled (in Electron mode)
 const showConnectionInfo = computed(() => {
@@ -157,6 +207,26 @@ async function copyToClipboard(url: string) {
   }
   catch (error) {
     console.error('Failed to copy to clipboard:', error)
+  }
+}
+
+// Show QR code for URL
+async function showQRCode(url: string) {
+  try {
+    qrCodeUrl.value = url
+    const dataUrl = await QRCode.toDataURL(url, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
+    })
+    qrCodeData.value = dataUrl
+    qrDialog.value = true
+  }
+  catch (error) {
+    console.error('Failed to generate QR code:', error)
   }
 }
 
