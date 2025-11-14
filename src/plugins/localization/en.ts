@@ -198,6 +198,11 @@ export default {
       action: {
         add: 'Use the {icon} button to add a new connection',
       },
+      http_server: {
+        title: 'HTTP Display Server',
+        running: 'Server running on port {port}',
+        stopped: 'Server stopped',
+      },
       info: {
         title: 'Network Connection Info',
         description: 'Other devices can connect using these URLs',

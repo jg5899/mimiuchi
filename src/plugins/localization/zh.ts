@@ -161,6 +161,11 @@ export default {
     connections: {
       title: '连接',
       description: '通过 {icon} 向其他应用发送数据',
+      http_server: {
+        title: 'HTTP显示服务器',
+        running: '服务器正在端口{port}上运行',
+        stopped: '服务器已停止',
+      },
       info: {
         title: '网络连接信息',
         description: '其他设备可以使用这些URL进行连接',

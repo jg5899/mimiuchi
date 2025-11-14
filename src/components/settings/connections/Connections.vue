@@ -20,7 +20,45 @@
     <v-card-text v-if="is_electron()">
       <ConnectionInfo />
     </v-card-text>
-    <v-divider v-if="is_electron() && defaultStore.broadcasting" />
+
+    <!-- HTTP Display Server - Electron only -->
+    <v-card-text v-if="is_electron()">
+      <v-row>
+        <v-col :cols="12">
+          <v-card>
+            <v-list-item>
+              <template #prepend>
+                <v-icon icon="mdi-monitor-screenshot" size="30" color="secondary" class="mr-4" />
+              </template>
+              <v-list-item-title>{{ t('settings.connections.http_server.title') }}</v-list-item-title>
+              <v-list-item-subtitle>
+                {{ httpServerRunning
+                  ? t('settings.connections.http_server.running', { port: httpServerPort })
+                  : t('settings.connections.http_server.stopped') }}
+              </v-list-item-subtitle>
+              <template #append>
+                <v-btn
+                  v-if="httpServerRunning"
+                  class="mr-4"
+                  variant="text"
+                  icon="mdi-open-in-new"
+                  @click="openDisplayClient"
+                />
+                <v-switch
+                  v-model="httpServerEnabled"
+                  color="primary"
+                  inset
+                  hide-details
+                  @update:model-value="toggleHttpServer"
+                />
+              </template>
+            </v-list-item>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-card-text>
+
+    <v-divider v-if="is_electron()" />
     <v-card-text v-if="!is_electron()">
       <v-row>
         <!-- User-defined connections -->
@@ -128,10 +166,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDefaultStore } from '@/stores/default'
 import { Connection, useConnectionsStore } from '@/stores/connections'
+import { useHttpServerStore } from '@/stores/httpserver'
 import ConnectionDialog from '@/components/settings/connections/dialogs/ConnectionDialog.vue'
 import ConnectionInfo from '@/components/ConnectionInfo.vue'
 import is_electron from '@/helpers/is_electron'
@@ -142,11 +181,17 @@ declare const window: any
 
 const connectionsStore = useConnectionsStore()
 const defaultStore = useDefaultStore()
+const httpServerStore = useHttpServerStore()
 
 const dialog = ref(false)
 const dialog_mode = ref<'add' | 'edit'>('add')
 const dialog_connection = ref<(Connection)>(new Connection())
 const dialog_user_connection_id = ref<number>(-1)
+
+// HTTP Server state
+const httpServerEnabled = ref(false)
+const httpServerRunning = ref(false)
+const httpServerPort = ref(8080)
 
 function display_subtitle(currentConnectionType: string) {
   return connectionsStore.types[currentConnectionType].display
@@ -176,4 +221,62 @@ function toggle_open_user_websocket(userConnectionID: number) {
       connectionsStore.disconnect_user_websocket(userConnectionID)
   }
 }
+
+// HTTP Server functions
+async function checkHttpServerStatus() {
+  if (!is_electron()) return
+
+  try {
+    const status = await window.ipcRenderer.invoke('httpserver-status')
+    httpServerRunning.value = status.running
+    httpServerPort.value = status.port || 8080
+    httpServerEnabled.value = status.running
+  } catch (error) {
+    console.error('Failed to check HTTP server status:', error)
+  }
+}
+
+async function toggleHttpServer() {
+  if (!is_electron()) return
+
+  try {
+    if (httpServerEnabled.value) {
+      // Start server
+      const result = await window.ipcRenderer.invoke('httpserver-start', {
+        port: httpServerStore.port
+      })
+      if (result.success) {
+        httpServerRunning.value = true
+        httpServerPort.value = result.port
+        httpServerStore.enabled = true
+      } else {
+        console.error('Failed to start HTTP server:', result.error)
+        httpServerEnabled.value = false
+      }
+    } else {
+      // Stop server
+      const result = await window.ipcRenderer.invoke('httpserver-stop')
+      if (result.success) {
+        httpServerRunning.value = false
+        httpServerStore.enabled = false
+      } else {
+        console.error('Failed to stop HTTP server:', result.error)
+        httpServerEnabled.value = true
+      }
+    }
+  } catch (error) {
+    console.error('HTTP server toggle error:', error)
+    httpServerEnabled.value = !httpServerEnabled.value
+  }
+}
+
+function openDisplayClient() {
+  if (httpServerRunning.value && is_electron()) {
+    window.ipcRenderer.send('open-external-url', `http://localhost:${httpServerPort.value}`)
+  }
+}
+
+onMounted(async () => {
+  await checkHttpServerStatus()
+})
 </script>

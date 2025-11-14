@@ -186,6 +186,11 @@ export default {
       action: {
         add: '接続を追加するには{icon}ボタンを使用してください。',
       },
+      http_server: {
+        title: 'HTTP表示サーバー',
+        running: 'ポート{port}で実行中',
+        stopped: 'サーバー停止中',
+      },
       info: {
         title: 'ネットワーク接続情報',
         description: '他のデバイスはこれらのURLを使用して接続できます',

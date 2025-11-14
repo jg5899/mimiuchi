@@ -312,3 +312,8 @@ ipcMain.handle('get-network-interfaces', async () => {
 
   return interfaces
 })
+
+// Open external URL in default browser
+ipcMain.on('open-external-url', (event, url: string) => {
+  shell.openExternal(url)
+})

@@ -160,6 +160,11 @@ export default {
     connections: {
       title: 'Conexiones',
       description: 'Enviar datos a otras aplicaciones cuando se utiliza {icon}',
+      http_server: {
+        title: 'Servidor de Visualización HTTP',
+        running: 'Servidor ejecutándose en el puerto {port}',
+        stopped: 'Servidor detenido',
+      },
       info: {
         title: 'Información de Conexión de Red',
         description: 'Otros dispositivos pueden conectarse usando estas URLs',

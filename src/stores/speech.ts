@@ -458,6 +458,11 @@ export const useSpeechStore = defineStore('speech', () => {
         if (openConnection) openConnection.send(`{"type": "text", "data": ${wsPayload}}`)
       }
 
+      // Broadcast to HTTP server display clients
+      if (is_electron()) {
+        window.ipcRenderer.send('httpserver-broadcast', wsPayload)
+      }
+
       // Post to user webhooks
       post_to_user_webhooks(log.transcript, true)
     }
