@@ -230,14 +230,24 @@ Stream transcriptions to any device via web browser:
 - Auto-reconnect on connection loss
 - Mobile-responsive design
 - IPC handlers for server control (start/stop/status/broadcast)
+- UI controls in Connections settings:
+  - Toggle switch to start/stop server
+  - Status display showing port when running
+  - "Open in browser" button for quick access
+  - Automatic broadcasting of transcriptions to connected clients
 
 **Files:**
 - `electron/main/modules/httpserver.ts` - HTTP + WebSocket server
 - `public/display.html` - Self-contained display client
 - `src/stores/httpserver.ts` - Server settings store
 - `electron/main/index.ts` - IPC handlers
+- `src/components/settings/connections/Connections.vue` - UI controls
+- `src/stores/speech.ts` - Broadcasting integration
 
-**Usage:** Navigate to `http://localhost:8080` from any device
+**Usage:**
+1. Enable server in Settings → Connections
+2. Click "Open in browser" or navigate to `http://localhost:8080`
+3. Transcriptions are automatically broadcast to all connected clients
 
 ### 3. Connection Info UI
 **Status:** ✅ IMPLEMENTED
@@ -303,6 +313,8 @@ Easy access to connection URLs for multi-device setup:
 3. **527b741** - Update package-lock.json after dependency removal
 4. **8b90651** - Add comprehensive change log documenting refactoring
 5. **a5784a9** - Phase 3: Add contextual translation, HTTP server, and connection info UI
+6. **2666e2d** - Update CHANGES.md with Phase 3 implementation details
+7. **af6bd16** - Add HTTP server UI controls and broadcasting integration
 
 **Branch:** `claude/fix-stability-issues-011CV6JJMSiRcY2fGZqpWw7m`
 
