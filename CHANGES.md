@@ -10,7 +10,8 @@ Major architectural simplification completed to focus on core speech-to-text, tr
 - **800+ lines of code removed**
 - **5 critical stability bugs fixed**
 - **3 dependencies eliminated**
-- **3 major enhancements added**
+- **4 major enhancements added**
+- **11 language support** (expanded from 4)
 - **Build verified and passing**
 
 ---
@@ -259,7 +260,7 @@ Easy access to connection URLs for multi-device setup:
 - IPv6 badge indicator
 - Only visible in Electron when broadcasting
 - Integrated into Connections settings page
-- Localized in 4 languages (en, es, ja, zh)
+- Localized in 11 languages (en, es, ja, zh, ro, uk, ru, fr, de, pt, it)
 
 **Files:**
 - `src/components/ConnectionInfo.vue` - Connection info display
@@ -267,12 +268,38 @@ Easy access to connection URLs for multi-device setup:
 - `electron/main/index.ts` - get-network-interfaces IPC handler
 - `src/components/settings/connections/Connections.vue` - Integration
 
+### 4. Internationalization Expansion
+**Status:** ✅ IMPLEMENTED
+
+Added support for 7 additional languages:
+- Romanian (ro) - Română (România)
+- Ukrainian (uk) - Українська (Україна)
+- Russian (ru) - Русский (Россия)
+- French (fr) - Français (France)
+- German (de) - Deutsch (Deutschland)
+- Portuguese (pt) - Português (Brasil)
+- Italian (it) - Italiano (Italia)
+
+All new languages include HTTP server and connection settings translations.
+English fallback automatically applies for sections not yet translated.
+
+**Files:**
+- `src/plugins/localization/ro.ts` - Romanian translations
+- `src/plugins/localization/uk.ts` - Ukrainian translations
+- `src/plugins/localization/ru.ts` - Russian translations
+- `src/plugins/localization/fr.ts` - French translations
+- `src/plugins/localization/de.ts` - German translations
+- `src/plugins/localization/pt.ts` - Portuguese translations
+- `src/plugins/localization/it.ts` - Italian translations
+- `src/plugins/i18n.ts` - Language registration
+
 ### Impact
 - **Translation Quality:** Context-aware translations for better accuracy
 - **Universal Access:** Stream to any device via HTTP/WebSocket
 - **Easier Setup:** Connection info with copy-to-clipboard URLs
+- **Global Reach:** 11 language support covering major European and Asian markets
 
-**Total:** 5 new files, 10 modified files, 1,014 lines added
+**Total:** 12 new files, 12 modified files, 1,268 lines added
 
 ---
 

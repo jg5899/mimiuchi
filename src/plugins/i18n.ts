@@ -4,6 +4,13 @@ import en from '@/plugins/localization/en'
 import es from '@/plugins/localization/es'
 import ja from '@/plugins/localization/ja'
 import zh from '@/plugins/localization/zh'
+import ro from '@/plugins/localization/ro'
+import uk from '@/plugins/localization/uk'
+import ru from '@/plugins/localization/ru'
+import fr from '@/plugins/localization/fr'
+import de from '@/plugins/localization/de'
+import pt from '@/plugins/localization/pt'
+import it from '@/plugins/localization/it'
 
 interface Language {
   title: string
@@ -15,6 +22,13 @@ const messages = {
   es,
   ja,
   zh,
+  ro,
+  uk,
+  ru,
+  fr,
+  de,
+  pt,
+  it,
 }
 
 export const global_langs = [
@@ -33,6 +47,34 @@ export const global_langs = [
   {
     title: '中文（中国）',
     value: 'zh',
+  },
+  {
+    title: 'Română (România)',
+    value: 'ro',
+  },
+  {
+    title: 'Українська (Україна)',
+    value: 'uk',
+  },
+  {
+    title: 'Русский (Россия)',
+    value: 'ru',
+  },
+  {
+    title: 'Français (France)',
+    value: 'fr',
+  },
+  {
+    title: 'Deutsch (Deutschland)',
+    value: 'de',
+  },
+  {
+    title: 'Português (Brasil)',
+    value: 'pt',
+  },
+  {
+    title: 'Italiano (Italia)',
+    value: 'it',
   },
 ] as Language[]
 
