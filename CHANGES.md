@@ -342,6 +342,8 @@ English fallback automatically applies for sections not yet translated.
 5. **a5784a9** - Phase 3: Add contextual translation, HTTP server, and connection info UI
 6. **2666e2d** - Update CHANGES.md with Phase 3 implementation details
 7. **af6bd16** - Add HTTP server UI controls and broadcasting integration
+8. **d64b692** - Update CHANGES.md with HTTP server UI implementation details
+9. **95b3ed8** - Add 7 additional language localizations
 
 **Branch:** `claude/fix-stability-issues-011CV6JJMSiRcY2fGZqpWw7m`
 
