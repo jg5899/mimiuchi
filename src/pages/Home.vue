@@ -56,18 +56,26 @@
         :class="{ 'fade-out': log.hide, 'final-text': log.isFinal || log.isTranslationFinal, 'interim-text': !log.isFinal || (!log.isTranslationFinal && log.translate) }"
       >
         <a v-if="log.hide !== 2">
-          <span v-if="translationStore.enabled && translationStore.display_mode === 'original'">
-            {{ log.transcript }}&nbsp;&nbsp;
-          </span>
-          <span v-else-if="translationStore.enabled && translationStore.display_mode === 'translation' && log.translation">
-            {{ log.translation }}&nbsp;&nbsp;
-          </span>
-          <span v-else-if="translationStore.enabled && translationStore.display_mode === 'both' && log.translation">
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;">
-              <div style="opacity: 0.7;">{{ log.transcript }}</div>
-              <div>{{ log.translation }}</div>
-            </div>
-          </span>
+          <!-- When translation is enabled, check display mode -->
+          <template v-if="translationStore.enabled">
+            <!-- Original only mode -->
+            <span v-if="translationStore.display_mode === 'original'">
+              {{ log.transcript }}&nbsp;&nbsp;
+            </span>
+            <!-- Translation only mode - show translation if available, otherwise show original -->
+            <span v-else-if="translationStore.display_mode === 'translation'">
+              {{ log.translation || log.transcript }}&nbsp;&nbsp;
+            </span>
+            <!-- Both mode - show both if translation available, otherwise just original -->
+            <span v-else-if="translationStore.display_mode === 'both'">
+              <div v-if="log.translation" style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;">
+                <div style="opacity: 0.7;">{{ log.transcript }}</div>
+                <div>{{ log.translation }}</div>
+              </div>
+              <span v-else>{{ log.transcript }}&nbsp;&nbsp;</span>
+            </span>
+          </template>
+          <!-- When translation is disabled, always show original -->
           <span v-else>
             {{ log.transcript }}&nbsp;&nbsp;
           </span>
