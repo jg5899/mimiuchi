@@ -11,6 +11,7 @@ export const useTranslationStore = defineStore('translation', () => {
   const target = ref('jpn_Jpan')
   const download = ref(-1) // percent downloaded 0-100. -1 = done
   const show_original = ref(true)
+  const display_mode = ref<'original' | 'translation' | 'both'>('translation') // What to show in main window
   const openai_api_key = ref('')
   const use_context = ref(false)
   const context_window_size = ref(3)
@@ -54,6 +55,7 @@ export const useTranslationStore = defineStore('translation', () => {
     target,
     download,
     show_original,
+    display_mode,
     openai_api_key,
     use_context,
     context_window_size,

@@ -22,6 +22,33 @@
       </v-col>
     </v-row>
 
+    <!-- Display Mode Selector - Only show when translation is enabled -->
+    <v-row v-if="translationStore.enabled && is_electron()" class="mb-2">
+      <v-col cols="12">
+        <v-btn-toggle
+          v-model="translationStore.display_mode"
+          color="primary"
+          variant="outlined"
+          divided
+          density="compact"
+          mandatory
+        >
+          <v-btn value="original" size="small">
+            <v-icon start>mdi-text</v-icon>
+            Original Only
+          </v-btn>
+          <v-btn value="translation" size="small">
+            <v-icon start>mdi-translate</v-icon>
+            Translation Only
+          </v-btn>
+          <v-btn value="both" size="small">
+            <v-icon start>mdi-format-list-bulleted</v-icon>
+            Both (Split)
+          </v-btn>
+        </v-btn-toggle>
+      </v-col>
+    </v-row>
+
     <div>
       <a
         v-for="(log, index) in logsStore.logs"
@@ -29,7 +56,21 @@
         :class="{ 'fade-out': log.hide, 'final-text': log.isFinal || log.isTranslationFinal, 'interim-text': !log.isFinal || (!log.isTranslationFinal && log.translate) }"
       >
         <a v-if="log.hide !== 2">
-          {{ (translationStore.enabled && log.translation) ? (translationStore.show_original ? `${log.transcript} (${log.translation})` : log.translation) : log.transcript }}&nbsp;&nbsp;
+          <span v-if="translationStore.enabled && translationStore.display_mode === 'original'">
+            {{ log.transcript }}&nbsp;&nbsp;
+          </span>
+          <span v-else-if="translationStore.enabled && translationStore.display_mode === 'translation' && log.translation">
+            {{ log.translation }}&nbsp;&nbsp;
+          </span>
+          <span v-else-if="translationStore.enabled && translationStore.display_mode === 'both' && log.translation">
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;">
+              <div style="opacity: 0.7;">{{ log.transcript }}</div>
+              <div>{{ log.translation }}</div>
+            </div>
+          </span>
+          <span v-else>
+            {{ log.transcript }}&nbsp;&nbsp;
+          </span>
         </a>
         <v-expand-transition v-show="log.pause">
           <div>

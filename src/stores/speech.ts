@@ -249,6 +249,7 @@ export const useSpeechStore = defineStore('speech', () => {
   function submit_text(input_text: string, input_index: number, isFinal: boolean) {
     const connectionsStore = useConnectionsStore()
     const logsStore = useLogsStore()
+    const defaultStore = useDefaultStore()
 
     post_to_user_webhooks(input_text, isFinal)
 
@@ -272,6 +273,11 @@ export const useSpeechStore = defineStore('speech', () => {
 
       for (const openConnection of connectionsStore.open.user_websockets) {
         if (openConnection) openConnection.send(rendered_payload)
+      }
+
+      // Broadcast to HTTP server display clients (regardless of realtime_text setting)
+      if (defaultStore.broadcasting && is_electron()) {
+        window.ipcRenderer.send('httpserver-broadcast', rendered_payload)
       }
     }
     else if (input_index === logsStore.logs.length - 1) {

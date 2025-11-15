@@ -154,6 +154,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDefaultStore } from '@/stores/default'
 import { useConnectionsStore } from '@/stores/connections'
+import { useHttpServerStore } from '@/stores/httpserver'
 import { getLocalIpAddresses, getConnectionUrls, type NetworkInterface } from '@/helpers/network'
 import is_electron from '@/helpers/is_electron'
 import QRCode from 'qrcode'
@@ -161,6 +162,7 @@ import QRCode from 'qrcode'
 const { t } = useI18n()
 const defaultStore = useDefaultStore()
 const connectionsStore = useConnectionsStore()
+const httpServerStore = useHttpServerStore()
 
 const networkInterfaces = ref<NetworkInterface[]>([])
 const websocketUrls = ref<string[]>([])
@@ -175,20 +177,24 @@ const showConnectionInfo = computed(() => {
   return is_electron() && defaultStore.broadcasting
 })
 
-// Get the port from user connections (use first enabled connection's port or default to 8080)
-const connectionPort = computed(() => {
-  const firstConnection = connectionsStore.user_websockets.find(conn => conn.enabled)
-  return firstConnection?.websocket?.port || 8080
+// Get the HTTP server port
+const httpServerPort = computed(() => {
+  const httpServerStore = useHttpServerStore()
+  return httpServerStore.port || 8080
 })
 
 // Load network interfaces and generate URLs
 async function loadNetworkInfo() {
   try {
     const interfaces = await getLocalIpAddresses()
-    networkInterfaces.value = interfaces.filter(iface => !iface.internal)
+    // Only show external (non-internal) IPv4 addresses to keep it simple
+    networkInterfaces.value = interfaces.filter(iface =>
+      !iface.internal && iface.family === 'IPv4'
+    )
 
-    const urls = await getConnectionUrls(connectionPort.value, false)
-    websocketUrls.value = urls.ws
+    // Only show HTTP URLs for the HTTP server (WebSocket is built into it)
+    const urls = await getConnectionUrls(httpServerPort.value, true)
+    websocketUrls.value = [] // Don't show separate WebSocket URLs
     httpUrls.value = urls.http
   }
   catch (error) {
