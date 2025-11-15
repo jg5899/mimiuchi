@@ -151,9 +151,12 @@ function isTextFinal(log: any): boolean {
     case 'original':
       return log.isFinal
     case 'translation':
-      return log.isTranslationFinal || log.isFinal // Fall back to isFinal if no translation
+      // If showing translation, use its finality; if showing original fallback, use original's finality
+      return log.translation ? log.isTranslationFinal : log.isFinal
     case 'both':
-      return log.isFinal && log.isTranslationFinal
+      // In both mode, if we have translation show it as final only if both are final
+      // If no translation yet, use original's finality
+      return log.translation ? (log.isFinal && log.isTranslationFinal) : log.isFinal
     default:
       return log.isFinal
   }

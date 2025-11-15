@@ -3,9 +3,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useLogsStore } from '@/stores/logs'
 import { useSpeechStore } from '@/stores/speech'
-import { useDefaultStore } from '@/stores/default'
-import { useConnectionsStore } from '@/stores/connections'
-import is_electron from '@/helpers/is_electron'
 
 export const useTranslationStore = defineStore('translation', () => {
   const enabled = ref(false)
@@ -34,22 +31,7 @@ export const useTranslationStore = defineStore('translation', () => {
         if (data.index !== undefined && logsStore.logs[data.index]) {
           logsStore.logs[data.index].translation = data.output
           logsStore.loading_result = true
-
-          // Broadcast translation update to HTTP/WebSocket clients
-          const defaultStore = useDefaultStore()
-          const connectionsStore = useConnectionsStore()
-          if (defaultStore.broadcasting && is_electron()) {
-            const wsPayload = JSON.stringify(logsStore.logs[data.index])
-            const fullMessage = `{"type": "text", "data": ${wsPayload}}`
-
-            // Broadcast to HTTP server clients
-            (window as any).ipcRenderer.send('httpserver-broadcast', fullMessage)
-
-            // Send to WebSocket clients
-            for (const openConnection of connectionsStore.open.user_websockets) {
-              if (openConnection) openConnection.send(fullMessage)
-            }
-          }
+          // Note: Broadcasting handled by on_submit() when translation completes
         }
         break
       case 'complete': {
@@ -65,6 +47,10 @@ export const useTranslationStore = defineStore('translation', () => {
           logsStore.loading_result = false
           logsStore.logs[data.index].translation = '[Translation Error]'
           logsStore.logs[data.index].isTranslationFinal = true
+
+          // Broadcast error state to clients
+          const { on_submit } = useSpeechStore()
+          on_submit(logsStore.logs[data.index], data.index)
           break
         }
 
