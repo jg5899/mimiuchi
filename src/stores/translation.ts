@@ -3,6 +3,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useLogsStore } from '@/stores/logs'
 import { useSpeechStore } from '@/stores/speech'
+import { useDefaultStore } from '@/stores/default'
+import { useConnectionsStore } from '@/stores/connections'
+import is_electron from '@/helpers/is_electron'
 
 export const useTranslationStore = defineStore('translation', () => {
   const enabled = ref(false)
@@ -31,12 +34,37 @@ export const useTranslationStore = defineStore('translation', () => {
         if (data.index !== undefined && logsStore.logs[data.index]) {
           logsStore.logs[data.index].translation = data.output
           logsStore.loading_result = true
+
+          // Broadcast translation update to HTTP/WebSocket clients
+          const defaultStore = useDefaultStore()
+          const connectionsStore = useConnectionsStore()
+          if (defaultStore.broadcasting && is_electron()) {
+            const wsPayload = JSON.stringify(logsStore.logs[data.index])
+            const fullMessage = `{"type": "text", "data": ${wsPayload}}`
+
+            // Broadcast to HTTP server clients
+            (window as any).ipcRenderer.send('httpserver-broadcast', fullMessage)
+
+            // Send to WebSocket clients
+            for (const openConnection of connectionsStore.open.user_websockets) {
+              if (openConnection) openConnection.send(fullMessage)
+            }
+          }
         }
         break
       case 'complete': {
         // Bounds check to prevent array out of bounds errors
         if (data.index === undefined || !logsStore.logs[data.index]) {
           console.warn('Translation complete for invalid index:', data.index)
+          break
+        }
+
+        // Validate translation output structure
+        if (!data.output || !Array.isArray(data.output) || data.output.length === 0 || !data.output[0]?.translation_text) {
+          console.error('Translation complete with invalid output:', data.output)
+          logsStore.loading_result = false
+          logsStore.logs[data.index].translation = '[Translation Error]'
+          logsStore.logs[data.index].isTranslationFinal = true
           break
         }
 
@@ -49,16 +77,21 @@ export const useTranslationStore = defineStore('translation', () => {
         on_submit(logsStore.logs[data.index], data.index)
         break
       }
-      case 'error':
+      case 'error': {
         console.error('Translation error received:', data.error)
         logsStore.loading_result = false
         // Set translation to error message instead of disabling entirely
         if (data.index !== undefined && logsStore.logs[data.index]) {
           logsStore.logs[data.index].translation = '[Translation Error]'
           logsStore.logs[data.index].isTranslationFinal = true
+
+          // Broadcast error state to clients
+          const { on_submit } = useSpeechStore()
+          on_submit(logsStore.logs[data.index], data.index)
         }
         // Don't disable translation - allow retries for future text
         break
+      }
     }
   }
   return {

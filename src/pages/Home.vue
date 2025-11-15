@@ -50,10 +50,10 @@
     </v-row>
 
     <div>
-      <a
+      <div
         v-for="(log, index) in logsStore.logs"
         :key="index"
-        :class="{ 'fade-out': log.hide, 'final-text': log.isFinal || log.isTranslationFinal, 'interim-text': !log.isFinal && !log.isTranslationFinal }"
+        :class="{ 'fade-out': log.hide, 'final-text': isTextFinal(log), 'interim-text': !isTextFinal(log) }"
       >
         <a v-if="log.hide !== 2">
           <!-- When translation is enabled, check display mode -->
@@ -89,7 +89,7 @@
             <v-col class="pa-0" />
           </div>
         </v-expand-transition>
-      </a>
+      </div>
     </div>
 
     <WelcomeOverlay :overlay="overlay_main" :page="overlay_page" />
@@ -139,6 +139,24 @@ const availableLanguages = ref([
 function onLanguageChange(newLang: string) {
   console.log('Translation language changed to:', newLang)
   // The translation will automatically update via the store reactivity
+}
+
+// Helper function to determine if displayed text is final based on display mode
+function isTextFinal(log: any): boolean {
+  if (!translationStore.enabled) {
+    return log.isFinal
+  }
+
+  switch (translationStore.display_mode) {
+    case 'original':
+      return log.isFinal
+    case 'translation':
+      return log.isTranslationFinal || log.isFinal // Fall back to isFinal if no translation
+    case 'both':
+      return log.isFinal && log.isTranslationFinal
+    default:
+      return log.isFinal
+  }
 }
 
 // Computed properties for reactive appearance settings

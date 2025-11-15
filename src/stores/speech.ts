@@ -373,12 +373,12 @@ export const useSpeechStore = defineStore('speech', () => {
     }
 
     // scroll to bottom
-    const loglist = document.getElementById('loglist')
+    const loglist = document.getElementById('log-list')
     if (loglist)
       loglist.scrollTop = loglist.scrollHeight
 
     let i = logsStore.logs.length - 1 // track current index
-    if ((i >= 0 && !logsStore.logs[i].isFinal) || log.translation) {
+    if (i >= 0 && (!logsStore.logs[i].isFinal || log.translation)) {
       logsStore.logs[index] = log
       // push to log
     }
@@ -390,9 +390,11 @@ export const useSpeechStore = defineStore('speech', () => {
     // new line delay
     if (logsStore.wait_interval)
       clearTimeout(logsStore.wait_interval)
-    if (text.new_line_delay >= 0) {
+    if (text.new_line_delay >= 0 && logsStore.logs.length > 0) {
       logsStore.wait_interval = setTimeout(() => {
-        logsStore.logs[logsStore.logs.length - 1].pause = true
+        if (logsStore.logs.length > 0) {
+          logsStore.logs[logsStore.logs.length - 1].pause = true
+        }
       }, text.new_line_delay * 1000)
     }
 
@@ -456,8 +458,8 @@ export const useSpeechStore = defineStore('speech', () => {
     }
 
     // send text via WebSockets and webhooks
-    // Always broadcast final results and translations, regardless of realtime_text setting
-    if (defaultStore.broadcasting) {
+    // Only broadcast final results and translations to prevent interim noise
+    if (defaultStore.broadcasting && (log.isFinal || log.translation)) {
       const wsPayload = JSON.stringify(log)
       const fullMessage = `{"type": "text", "data": ${wsPayload}}`
 
