@@ -53,7 +53,7 @@
       <a
         v-for="(log, index) in logsStore.logs"
         :key="index"
-        :class="{ 'fade-out': log.hide, 'final-text': log.isFinal || log.isTranslationFinal, 'interim-text': !log.isFinal || (!log.isTranslationFinal && log.translate) }"
+        :class="{ 'fade-out': log.hide, 'final-text': log.isFinal || log.isTranslationFinal, 'interim-text': !log.isFinal && !log.isTranslationFinal }"
       >
         <a v-if="log.hide !== 2">
           <!-- When translation is enabled, check display mode -->
@@ -73,6 +73,10 @@
                 <div>{{ log.translation }}</div>
               </div>
               <span v-else>{{ log.transcript }}&nbsp;&nbsp;</span>
+            </span>
+            <!-- Fallback for any invalid display_mode value -->
+            <span v-else>
+              {{ log.transcript }}&nbsp;&nbsp;
             </span>
           </template>
           <!-- When translation is disabled, always show original -->
@@ -137,16 +141,17 @@ function onLanguageChange(newLang: string) {
   // The translation will automatically update via the store reactivity
 }
 
-const font_size = `${appearanceStore.text.font_size}px`
-const fade_time = `${appearanceStore.text.fade_time}s`
-const text_color = appearanceStore.text.color
-const interim_color = appearanceStore.text.interim_color
+// Computed properties for reactive appearance settings
+const font_size = computed(() => `${appearanceStore.text.font_size}px`)
+const fade_time = computed(() => `${appearanceStore.text.fade_time}s`)
+const text_color = computed(() => appearanceStore.text.color)
+const interim_color = computed(() => appearanceStore.text.interim_color)
 
-const font_name = appearanceStore.text.font.name
-const font_subtype = appearanceStore.text.font.sub_type
+const font_name = computed(() => appearanceStore.text.font.name)
+const font_subtype = computed(() => appearanceStore.text.font.sub_type)
 
-const outline_size = `${appearanceStore.text.outline ? appearanceStore.text.outline_size : 0}px`
-const outline_color = appearanceStore.text.outline_color
+const outline_size = computed(() => `${appearanceStore.text.outline ? appearanceStore.text.outline_size : 0}px`)
+const outline_color = computed(() => appearanceStore.text.outline_color)
 
 const overlay_main = ref(false)
 const overlay_page = ref(0)

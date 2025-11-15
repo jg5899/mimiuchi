@@ -27,10 +27,19 @@ export const useTranslationStore = defineStore('translation', () => {
         download.value = -1
         break
       case 'update':
-        logsStore.logs[data.index].translation = data.output
-        logsStore.loading_result = true
+        // Bounds check to prevent array out of bounds errors
+        if (data.index !== undefined && logsStore.logs[data.index]) {
+          logsStore.logs[data.index].translation = data.output
+          logsStore.loading_result = true
+        }
         break
       case 'complete': {
+        // Bounds check to prevent array out of bounds errors
+        if (data.index === undefined || !logsStore.logs[data.index]) {
+          console.warn('Translation complete for invalid index:', data.index)
+          break
+        }
+
         const { on_submit } = useSpeechStore()
 
         logsStore.logs[data.index].translation = data.output[0].translation_text
@@ -43,8 +52,12 @@ export const useTranslationStore = defineStore('translation', () => {
       case 'error':
         console.error('Translation error received:', data.error)
         logsStore.loading_result = false
-        // Optionally disable translation on error to prevent further crashes
-        enabled.value = false
+        // Set translation to error message instead of disabling entirely
+        if (data.index !== undefined && logsStore.logs[data.index]) {
+          logsStore.logs[data.index].translation = '[Translation Error]'
+          logsStore.logs[data.index].isTranslationFinal = true
+        }
+        // Don't disable translation - allow retries for future text
         break
     }
   }

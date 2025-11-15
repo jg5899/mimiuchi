@@ -456,7 +456,8 @@ export const useSpeechStore = defineStore('speech', () => {
     }
 
     // send text via WebSockets and webhooks
-    if (defaultStore.broadcasting && !settingsStore.realtime_text) {
+    // Always broadcast final results and translations, regardless of realtime_text setting
+    if (defaultStore.broadcasting) {
       const wsPayload = JSON.stringify(log)
       const fullMessage = `{"type": "text", "data": ${wsPayload}}`
 
