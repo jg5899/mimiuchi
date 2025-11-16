@@ -195,7 +195,8 @@ async function loadNetworkInfo() {
     // Only show HTTP URLs for the HTTP server (WebSocket is built into it)
     const urls = await getConnectionUrls(httpServerPort.value, true)
     websocketUrls.value = [] // Don't show separate WebSocket URLs
-    httpUrls.value = urls.http
+    // Filter to only IPv4 URLs (IPv6 URLs contain brackets)
+    httpUrls.value = urls.http.filter(url => !url.includes('['))
   }
   catch (error) {
     console.error('Failed to load network info:', error)
