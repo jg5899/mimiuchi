@@ -13,53 +13,28 @@
     </div>
 
     <div class="stream-content">
-      <div
-        v-for="(log, index) in displayLogs"
-        :key="index"
-        :class="{ 'final-text': log.isFinal, 'interim-text': !log.isFinal }"
-        class="stream-log"
-      >
-        {{ log.translation || log.transcript }}&nbsp;&nbsp;
+      <!-- Continuous flowing text display, just like Home page -->
+      <div>
+        <span
+          v-for="(log, index) in displayLogs"
+          :key="index"
+          :class="{ 'final-text': log.isFinal, 'interim-text': !log.isFinal }"
+        >
+          {{ log.translation }}&nbsp;&nbsp;
+        </span>
       </div>
 
-      <div class="text-center text-disabled mt-8">
+      <!-- Show message if no logs -->
+      <div v-if="displayLogs.length === 0" class="text-center text-disabled mt-8">
         <v-icon size="64" class="mb-4">
           mdi-translate
         </v-icon>
-        <p v-if="displayLogs.length === 0">Waiting for transcriptions...</p>
-        <p v-else>{{ displayLogs.length }} logs found</p>
+        <p>Waiting for transcriptions...</p>
         <p class="text-caption">
           Start speaking in the main app
         </p>
-        <p class="text-caption mt-4 text-info">
-          Debug Info:
-        </p>
-        <p class="text-caption">
-          Language ID: {{ languageId }}
-        </p>
-        <p class="text-caption">
-          Language Name: {{ languageName }}
-        </p>
-        <p class="text-caption">
-          Target Lang: {{ targetLang }}
-        </p>
-        <p class="text-caption">
-          MultiLogs count: {{ multiTranslationStore.multiLogs.length }}
-        </p>
-        <p class="text-caption">
-          Regular logs count: {{ logsStore.logs.length }}
-        </p>
-        <p class="text-caption">
-          Display logs count: {{ displayLogs.length }}
-        </p>
       </div>
 
-      <div v-if="displayLogs.length > 0 && !displayLogs[0].translation" class="text-center text-warning mt-2 mb-4">
-        <v-chip color="info" size="small" variant="outlined">
-          <v-icon start size="small">mdi-information</v-icon>
-          Showing {{ languageName }} original text (translation in progress...)
-        </v-chip>
-      </div>
     </div>
   </v-card>
 </template>
@@ -102,17 +77,25 @@ const displayLogs = computed(() => {
 
   // If we have multiLogs, use them (proper multi-language system)
   if (multiTranslationStore.multiLogs.length > 0) {
-    return multiTranslationStore.getLogsForLanguage(targetLang.value)
+    const allLogs = multiTranslationStore.getLogsForLanguage(targetLang.value)
+
+    // Filter to only show:
+    // 1. Final results (reduce clutter from interim updates)
+    // 2. Logs that have a translation for this language (no empty strings)
+    const finalLogsWithTranslation = allLogs.filter(log =>
+      log.isFinal && log.translation && log.translation.trim() !== ''
+    )
+
+    console.log(`Filtered to ${finalLogsWithTranslation.length} final logs with translation for ${targetLang.value}`)
+    console.log('Sample log:', finalLogsWithTranslation[finalLogsWithTranslation.length - 1])
+
+    // Limit to most recent 50 entries to prevent performance issues
+    return finalLogsWithTranslation.slice(-50)
   }
 
-  // Fallback: show regular logs with translation (for backward compatibility)
-  // This happens if translation was enabled on Home page before opening streams
-  return logsStore.logs.map(log => ({
-    transcript: log.transcript,
-    translation: log.translation || '',
-    isFinal: log.isFinal,
-    time: log.time,
-  }))
+  // Fallback: if no multiLogs yet, return empty array
+  // (Don't fall back to regular logs - those don't have multi-language translations)
+  return []
 })
 
 // No need to sync - translations are automatically populated by the translation_queue system
@@ -135,16 +118,12 @@ const displayLogs = computed(() => {
   flex: 1;
   display: flex;
   flex-direction: column-reverse;
-}
-
-.stream-log {
-  margin-bottom: 8px;
-  padding: 4px;
+  line-height: 1.6;
+  word-wrap: break-word;
 }
 
 .final-text {
   color: v-bind('appearanceStore.text.color');
-  opacity: 1;
 }
 
 .interim-text {

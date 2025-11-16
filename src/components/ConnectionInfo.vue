@@ -50,7 +50,7 @@
           <v-divider class="my-2" />
           <v-list-subheader class="px-0">
             <v-icon size="small" class="mr-1">mdi-web</v-icon>
-            HTTP URLs
+            HTTP URLs - All Languages
           </v-list-subheader>
           <v-list-item
             v-for="(url, index) in httpUrls"
@@ -81,6 +81,49 @@
               </v-btn>
             </template>
           </v-list-item>
+        </template>
+
+        <!-- Language-Specific URLs -->
+        <template v-if="languageUrls.length > 0">
+          <v-divider class="my-2" />
+          <v-list-subheader class="px-0">
+            <v-icon size="small" class="mr-1">mdi-translate</v-icon>
+            Language-Specific URLs
+          </v-list-subheader>
+          <template v-for="langUrlGroup in languageUrls" :key="langUrlGroup.language">
+            <v-list-subheader class="px-0 text-caption">
+              {{ langUrlGroup.languageName }}
+            </v-list-subheader>
+            <v-list-item
+              v-for="(url, index) in langUrlGroup.urls"
+              :key="`lang-${langUrlGroup.language}-${index}`"
+              class="px-0"
+            >
+              <v-list-item-title class="text-body-2 font-mono">
+                {{ url }}
+              </v-list-item-title>
+              <template #append>
+                <v-btn
+                  icon
+                  size="small"
+                  variant="text"
+                  @click="showQRCode(url)"
+                >
+                  <v-icon size="small">mdi-qrcode</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  size="small"
+                  variant="text"
+                  @click="copyToClipboard(url)"
+                >
+                  <v-icon size="small">
+                    {{ copiedUrl === url ? 'mdi-check' : 'mdi-content-copy' }}
+                  </v-icon>
+                </v-btn>
+              </template>
+            </v-list-item>
+          </template>
         </template>
 
         <!-- Local IP Addresses -->
@@ -155,6 +198,7 @@ import { useI18n } from 'vue-i18n'
 import { useDefaultStore } from '@/stores/default'
 import { useConnectionsStore } from '@/stores/connections'
 import { useHttpServerStore } from '@/stores/httpserver'
+import { useMultiTranslationStore } from '@/stores/multi_translation'
 import { getLocalIpAddresses, getConnectionUrls, type NetworkInterface } from '@/helpers/network'
 import is_electron from '@/helpers/is_electron'
 import QRCode from 'qrcode'
@@ -163,10 +207,18 @@ const { t } = useI18n()
 const defaultStore = useDefaultStore()
 const connectionsStore = useConnectionsStore()
 const httpServerStore = useHttpServerStore()
+const multiTranslationStore = useMultiTranslationStore()
+
+interface LanguageUrlGroup {
+  language: string
+  languageName: string
+  urls: string[]
+}
 
 const networkInterfaces = ref<NetworkInterface[]>([])
 const websocketUrls = ref<string[]>([])
 const httpUrls = ref<string[]>([])
+const languageUrls = ref<LanguageUrlGroup[]>([])
 const copiedUrl = ref<string | null>(null)
 const qrDialog = ref(false)
 const qrCodeUrl = ref('')
@@ -197,6 +249,21 @@ async function loadNetworkInfo() {
     websocketUrls.value = [] // Don't show separate WebSocket URLs
     // Filter to only IPv4 URLs (IPv6 URLs contain brackets)
     httpUrls.value = urls.http.filter(url => !url.includes('['))
+
+    // Generate language-specific URLs for each enabled language
+    languageUrls.value = []
+    const enabledStreams = multiTranslationStore.enabledStreams
+    for (const stream of enabledStreams) {
+      const langUrls = urls.http
+        .filter(url => !url.includes('['))
+        .map(baseUrl => `${baseUrl}?lang=${stream.id}`)
+
+      languageUrls.value.push({
+        language: stream.id,
+        languageName: stream.name,
+        urls: langUrls
+      })
+    }
   }
   catch (error) {
     console.error('Failed to load network info:', error)

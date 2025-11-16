@@ -1,13 +1,13 @@
 <template>
   <v-card
-    title="Multi-Language Streams" subtitle="Configure simultaneous translation output streams"
+    title="Multi-Language Streaming" subtitle="Simultaneous translation to multiple languages"
     color="transparent" flat
   >
     <v-divider />
     <v-card-text>
       <v-alert type="info" variant="outlined" class="mb-4">
-        Open language stream URLs in separate windows/tabs to display multiple translations simultaneously.
-        Each stream will show transcriptions and translations in real-time.
+        <strong>Multi-Language Streaming:</strong> Open language stream URLs in separate windows/tabs to display multiple translations simultaneously.
+        Each stream will show transcriptions and translations in real-time. This is different from single-language translation in Settings > Translation.
       </v-alert>
 
       <v-row>
@@ -86,24 +86,6 @@
 
       <v-row>
         <v-col :cols="12">
-          <v-card flat>
-            <v-list-item title="Enable multi-language translation">
-              <template #subtitle>
-                Translate transcriptions to all enabled language streams
-              </template>
-              <template #append>
-                <v-switch
-                  v-model="multiLanguageEnabled"
-                  color="primary"
-                  hide-details
-                  inset
-                />
-              </template>
-            </v-list-item>
-          </v-card>
-        </v-col>
-
-        <v-col :cols="12">
           <v-alert type="warning" variant="outlined">
             <strong>Note:</strong> Translation requires Electron version. For web version,
             language streams will display the original transcription. Enable translation in
@@ -144,11 +126,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
 
 const multiTranslationStore = useMultiTranslationStore()
-const multiLanguageEnabled = ref(true)
 
 function getStreamUrl(route: string): string {
   const baseUrl = window.location.origin + window.location.pathname

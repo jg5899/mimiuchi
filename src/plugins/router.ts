@@ -28,7 +28,7 @@ const routes = [
     },
   },
   {
-    path: '/:lang(spanish|ukrainian|russian|portuguese|french|korean|mandarin|tagalog|vietnamese|arabic|hindi|polish)',
+    path: '/:lang(spanish|ukrainian|russian|portuguese|french|korean|mandarin|tagalog|vietnamese|arabic|hindi|polish|romanian)',
     name: 'language-stream',
     component: LanguageStream,
   },

@@ -16,6 +16,7 @@ const languageMap: Record<string, string> = {
   'arb_Arab': 'Arabic',
   'hin_Deva': 'Hindi',
   'pol_Latn': 'Polish',
+  'ron_Latn': 'Romanian',
 }
 
 let apiKey: string = ''
@@ -23,13 +24,24 @@ let apiKey: string = ''
 parentPort?.on('message', async (message) => {
   if (message.type === 'set-api-key') {
     apiKey = message.apiKey
+    console.log('[TranslationWorker] API key set, length:', apiKey?.length)
     parentPort?.postMessage({ status: 'ready' })
     return
   }
 
   if (message.type === 'transformers-translate' || message.type === 'transformers-translate-multi') {
+    console.log('[TranslationWorker] Received translation request:', {
+      type: message.type,
+      text: message.data.text?.substring(0, 50),
+      src_lang: message.data.src_lang,
+      tgt_lang: message.data.tgt_lang,
+      index: message.data.index,
+      hasApiKey: !!apiKey,
+    })
+
     try {
       if (!apiKey) {
+        console.error('[TranslationWorker] No API key configured!')
         throw new Error('OpenAI API key not configured')
       }
 
@@ -78,6 +90,12 @@ parentPort?.on('message', async (message) => {
         throw new Error('Empty translation result')
       }
 
+      console.log('[TranslationWorker] Translation complete:', {
+        index: message.data.index,
+        tgt_lang: message.data.tgt_lang,
+        translation: translation.substring(0, 50),
+      })
+
       // Send back to main thread in the same format as before
       parentPort?.postMessage({
         status: 'complete',
@@ -86,7 +104,7 @@ parentPort?.on('message', async (message) => {
         tgt_lang: message.data.tgt_lang,
       })
     } catch (error: any) {
-      console.error('Translation error:', error)
+      console.error('[TranslationWorker] Translation error:', error)
       // Send error back to main thread
       parentPort?.postMessage({
         status: 'error',

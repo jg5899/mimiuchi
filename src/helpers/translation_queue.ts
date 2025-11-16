@@ -41,8 +41,18 @@ class TranslationQueue {
   }
 
   addMultiLanguageTasks(text: string, srcLang: string, logIndex: number) {
-    if (!this.multiTranslationStore || !this.translationStore)
+    console.log('[TranslationQueue] addMultiLanguageTasks called:', {
+      text: text.substring(0, 50),
+      srcLang,
+      logIndex,
+      hasMultiStore: !!this.multiTranslationStore,
+      hasTranslationStore: !!this.translationStore,
+    })
+
+    if (!this.multiTranslationStore || !this.translationStore) {
+      console.error('[TranslationQueue] Stores not initialized! Cannot proceed with translations.')
       return
+    }
 
     // Build context string from last N items in contextHistory
     let contextString = ''
@@ -53,7 +63,10 @@ class TranslationQueue {
     }
 
     const enabledLangs = this.multiTranslationStore.enabledTargetLangs
+    console.log('[TranslationQueue] Enabled languages:', enabledLangs)
+
     enabledLangs.forEach((tgtLang: string) => {
+      console.log(`[TranslationQueue] Adding task for ${tgtLang}`)
       this.addTask(text, srcLang, tgtLang, logIndex, contextString)
     })
 
@@ -71,6 +84,7 @@ class TranslationQueue {
   private async processQueue() {
     if (this.queue.length === 0) {
       this.isProcessing = false
+      console.log('[TranslationQueue] Queue empty, stopping processing')
       return
     }
 
@@ -80,8 +94,17 @@ class TranslationQueue {
     if (!task)
       return
 
+    console.log('[TranslationQueue] Processing task:', {
+      text: task.text.substring(0, 50),
+      srcLang: task.srcLang,
+      tgtLang: task.tgtLang,
+      logIndex: task.logIndex,
+      isElectron: is_electron(),
+    })
+
     if (is_electron()) {
       // Send translation request to Electron worker
+      console.log('[TranslationQueue] Sending to Electron worker via IPC')
       window.ipcRenderer.send('transformers-translate-multi', {
         text: task.text,
         context: task.context || '',
@@ -103,9 +126,48 @@ class TranslationQueue {
   }
 
   private handleTranslationResult(data: any) {
+    console.log('[TranslationQueue] Received translation result:', {
+      status: data.status,
+      index: data.index,
+      tgt_lang: data.tgt_lang,
+      hasOutput: !!data.output,
+      hasStore: !!this.multiTranslationStore,
+    })
+
     if (data.status === 'complete' && this.multiTranslationStore) {
+      // Validate translation output structure
+      if (!data.output || !Array.isArray(data.output) || data.output.length === 0 || !data.output[0]?.translation_text) {
+        console.error('[TranslationQueue] Translation complete with invalid output:', data.output)
+        this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, '[Translation Error]')
+        return
+      }
       const translation = data.output[0].translation_text
+      console.log(`[TranslationQueue] Updating translation for ${data.tgt_lang}:`, translation.substring(0, 50))
       this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, translation)
+
+      // CRITICAL: Broadcast the translation to HTTP server display clients
+      if (is_electron()) {
+        const log = this.multiTranslationStore.multiLogs[data.index]
+        if (log) {
+          const stream = this.multiTranslationStore.languageStreams.find(
+            (s: any) => s.targetLang === data.tgt_lang && s.enabled
+          )
+
+          if (stream) {
+            const langPayload = {
+              transcript: log.transcript,
+              translation: translation,
+              targetLang: data.tgt_lang,
+              languageName: stream.name,
+              isFinal: log.isFinal,
+              time: log.time,
+            }
+            const langMessage = `{"type": "text", "data": ${JSON.stringify(langPayload)}}`
+            console.log(`[TranslationQueue] Broadcasting translation for ${stream.name} (${data.tgt_lang}):`, translation.substring(0, 50))
+            window.ipcRenderer.send('httpserver-broadcast', langMessage)
+          }
+        }
+      }
     }
   }
 

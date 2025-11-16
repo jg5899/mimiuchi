@@ -138,10 +138,20 @@ function getTransformersWorker(): Worker {
     transformersWorker = new Worker(new URL(transformersWorkerPath, import.meta.url))
 
     transformersWorker.on('message', (x) => {
+      console.log('[Main Worker] Received message from translation worker:', {
+        status: x.status,
+        index: x.index,
+        tgt_lang: x.tgt_lang,
+        hasOutput: !!x.output,
+      })
+
       if (win && !win.isDestroyed()) {
+        console.log('[Main Worker] Sending to renderer via transformers-translate-render and transformers-translate-render-multi')
         win.webContents.send('transformers-translate-render', x)
         // Also send to multi-language handler
         win.webContents.send('transformers-translate-render-multi', x)
+      } else {
+        console.warn('[Main Worker] Window is destroyed or null, cannot send message')
       }
     })
   }
@@ -228,10 +238,17 @@ ipcMain.on('transformers-translate', async (event, args) => {
 })
 
 ipcMain.on('transformers-translate-multi', async (event, args) => {
+  console.log('[Main IPC] Received transformers-translate-multi request:', {
+    text: args.text?.substring(0, 50),
+    src_lang: args.src_lang,
+    tgt_lang: args.tgt_lang,
+    index: args.index,
+  })
   getTransformersWorker().postMessage({ type: 'transformers-translate-multi', data: args })
 })
 
 ipcMain.on('set-translation-api-key', async (event, apiKey) => {
+  console.log('[Main IPC] Received set-translation-api-key, length:', apiKey?.length)
   getTransformersWorker().postMessage({ type: 'set-api-key', apiKey })
 })
 
@@ -252,9 +269,9 @@ ipcMain.handle('httpserver-start', async (event, config: { port: number }) => {
 
     return { success: true, port: httpServer.getPort() }
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Failed to start HTTP server:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error?.message || String(error) }
   }
 })
 
@@ -266,9 +283,9 @@ ipcMain.handle('httpserver-stop', async () => {
     }
     return { success: true }
   }
-  catch (error) {
+  catch (error: any) {
     console.error('Failed to stop HTTP server:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error?.message || String(error) }
   }
 })
 
@@ -281,8 +298,13 @@ ipcMain.handle('httpserver-status', async () => {
 
 // Broadcast transcription messages to HTTP display clients
 ipcMain.on('httpserver-broadcast', (event, message: string) => {
+  console.log('[Main IPC] Received httpserver-broadcast request, message length:', message?.length)
+
   if (httpServer && httpServer.getIsRunning()) {
+    console.log('[Main IPC] Broadcasting to HTTP server clients')
     httpServer.broadcast(message)
+  } else {
+    console.warn('[Main IPC] HTTP server not running, cannot broadcast')
   }
 })
 

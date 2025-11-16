@@ -1,11 +1,14 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import electron from 'vite-plugin-electron/simple'
 import vuetify from 'vite-plugin-vuetify'
-import pkg from './package.json' with { type: 'json' }
+
+const require = createRequire(import.meta.url)
+const pkg = require('./package.json')
 
 // Polyfill for crypto.hash if not available
 if (!crypto.hash) {

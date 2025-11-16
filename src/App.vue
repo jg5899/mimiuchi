@@ -19,9 +19,12 @@ import { useSettingsStore } from '@/stores/settings'
 import { useSpeechStore } from '@/stores/speech'
 import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
+import { useHttpServerStore } from '@/stores/httpserver'
+import { useMultiTranslationStore } from '@/stores/multi_translation'
 import { global_langs } from '@/plugins/i18n'
 
 import is_electron from '@/helpers/is_electron'
+import { translationQueue } from '@/helpers/translation_queue'
 
 import SystemBar from '@/components/appbars/SystemBar.vue'
 import migrate_to_v0_5_0 from '@/migration/migrate_to_v0.5.0'
@@ -34,14 +37,14 @@ const appearanceStore = useAppearanceStore()
 const speechStore = useSpeechStore()
 const wordReplaceStore = useWordReplaceStore()
 const translationStore = useTranslationStore()
+const multiTranslationStore = useMultiTranslationStore()
 const settingsStore = useSettingsStore()
 const connectionsStore = useConnectionsStore()
+const httpServerStore = useHttpServerStore()
 
 const router = useRouter()
 
-if (is_electron())
-  router.push('/')
-
+// Set up store subscriptions to save to localStorage
 appearanceStore.$subscribe((_, state) => {
   localStorage.setItem('appearance', JSON.stringify(state))
 })
@@ -60,20 +63,62 @@ translationStore.$subscribe((_, state) => {
 connectionsStore.$subscribe((_, state) => {
   localStorage.setItem('connections', JSON.stringify(state))
 })
+httpServerStore.$subscribe((_, state) => {
+  localStorage.setItem('httpserver', JSON.stringify(state))
+})
 
+// CRITICAL: Load stores from localStorage FIRST, before using them
 appearanceStore.$patch(JSON.parse(localStorage.getItem('appearance') || '{}'))
 speechStore.$patch(JSON.parse(localStorage.getItem('speech') || '{}'))
 settingsStore.$patch(JSON.parse(localStorage.getItem('settings') || '{}'))
 wordReplaceStore.$patch(JSON.parse(localStorage.getItem('word_replace') || '{}'))
 translationStore.$patch(JSON.parse(localStorage.getItem('translation') || '{}'))
 connectionsStore.$patch(JSON.parse(localStorage.getItem('connections') || '{}'))
+httpServerStore.$patch(JSON.parse(localStorage.getItem('httpserver') || '{}'))
+
+// NOW initialize translation queue with stores (after they're loaded from localStorage)
+translationQueue.initialize(translationStore, multiTranslationStore)
+console.log('[App.vue] Translation queue initialized with stores:', {
+  hasTranslationStore: !!translationStore,
+  hasMultiStore: !!multiTranslationStore,
+  hasOpenAIKey: !!translationStore.openai_api_key,
+  apiKeyLength: translationStore.openai_api_key?.length || 0,
+})
+
+// Initialize translation worker with API key if in Electron (after stores loaded!)
+if (is_electron() && translationStore.openai_api_key) {
+  console.log('[App.vue] Sending OpenAI API key to worker on startup, length:', translationStore.openai_api_key.length)
+  window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
+} else if (is_electron()) {
+  console.warn('[App.vue] No OpenAI API key found on startup - translations will fail until key is set')
+}
+
+if (is_electron())
+  router.push('/')
 
 // Migration code – start
 if (settingsStore.config_version < 1) {
   migrate_to_v0_5_0()
   settingsStore.config_version = 1
 }
+// Enable HTTP server by default (one-time migration)
+if (settingsStore.config_version < 2) {
+  httpServerStore.enabled = true
+  settingsStore.config_version = 2
+}
 // Migration code – end
+
+// Auto-start HTTP server if enabled
+if (is_electron() && httpServerStore.enabled) {
+  console.log('[App.vue] Auto-starting HTTP server on port', httpServerStore.port)
+  window.ipcRenderer.invoke('httpserver-start', { port: httpServerStore.port })
+    .then(() => {
+      console.log('[App.vue] HTTP server auto-started successfully on port', httpServerStore.port)
+    })
+    .catch((error: Error) => {
+      console.error('[App.vue] Failed to auto-start HTTP server:', error)
+    })
+}
 
 settingsStore.languages = global_langs
 

@@ -1,11 +1,17 @@
 <template>
   <v-card
-    :title="t('settings.translation.title')" :subtitle="t('settings.translation.description')"
+    title="Single Language Translation" subtitle="Configure translation to one target language at a time"
     color="transparent" flat
   >
     <v-divider />
     <v-card-text>
       <v-row>
+        <v-col :cols="12">
+          <v-alert type="info" variant="outlined" class="mb-2">
+            <strong>Single vs Multi-Language:</strong> This page configures single-language translation (one target language).
+            For simultaneous multi-language streams, use Settings > Multi-Language.
+          </v-alert>
+        </v-col>
         <v-col>
           <v-chip variant="outlined" label color="error" size="large">
             <v-icon start icon="mdi-alert" />

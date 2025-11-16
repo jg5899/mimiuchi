@@ -105,6 +105,13 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
       enabled: false,
       route: '/polish',
     },
+    {
+      id: 'romanian',
+      name: 'Romanian',
+      targetLang: 'ron_Latn',
+      enabled: true,
+      route: '/romanian',
+    },
   ])
 
   // Multi-language translation logs
@@ -134,8 +141,18 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
 
   // Update translation for a specific language in a log
   function updateTranslation(logIndex: number, langCode: string, translation: string) {
+    console.log('[MultiTranslation] updateTranslation called:', {
+      logIndex,
+      langCode,
+      translation: translation.substring(0, 50),
+      logExists: !!multiLogs.value[logIndex],
+    })
+
     if (multiLogs.value[logIndex]) {
       multiLogs.value[logIndex].translations[langCode] = translation
+      console.log('[MultiTranslation] Translation updated. Log now has:', Object.keys(multiLogs.value[logIndex].translations))
+    } else {
+      console.error('[MultiTranslation] Log at index', logIndex, 'does not exist!')
     }
   }
 

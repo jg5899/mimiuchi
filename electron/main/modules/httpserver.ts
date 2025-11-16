@@ -1,7 +1,7 @@
 import * as http from 'node:http'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
-import { WebSocketServer } from 'ws'
+import { WebSocketServer, WebSocket } from 'ws'
 
 interface HttpServerConfig {
   port: number
@@ -14,6 +14,8 @@ class HttpServer {
   private port: number
   private publicPath: string
   private isRunning: boolean = false
+  // Track language subscriptions per WebSocket connection
+  private subscriptions: Map<WebSocket, string | null> = new Map()
 
   constructor(config: HttpServerConfig) {
     this.port = config.port
@@ -50,8 +52,26 @@ class HttpServer {
       this.wss.on('connection', (ws) => {
         console.log('Display client connected via WebSocket')
 
+        // Initialize with no language filter (show all by default)
+        this.subscriptions.set(ws, null)
+
+        // Handle incoming messages for subscription
+        ws.on('message', (data) => {
+          try {
+            const message = JSON.parse(data.toString())
+            if (message.type === 'subscribe' && message.targetLang) {
+              console.log(`Client subscribed to language: ${message.targetLang}`)
+              this.subscriptions.set(ws, message.targetLang)
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error)
+          }
+        })
+
         ws.on('close', () => {
           console.log('Display client disconnected')
+          // Clean up subscription tracking
+          this.subscriptions.delete(ws)
         })
 
         ws.on('error', (error) => {
@@ -106,11 +126,47 @@ class HttpServer {
   broadcast(message: string): void {
     if (!this.wss) return
 
+    // Parse the message to check if it has a targetLang
+    let messageData: any = null
+    try {
+      const parsed = JSON.parse(message)
+      if (parsed.type === 'text' && parsed.data) {
+        messageData = parsed.data
+      }
+    } catch (error) {
+      // If parsing fails, broadcast to all (old format)
+      console.error('Error parsing broadcast message:', error)
+    }
+
+    let sentCount = 0
     this.wss.clients.forEach((client) => {
       if (client.readyState === 1) { // WebSocket.OPEN
-        client.send(message)
+        const subscribedLang = this.subscriptions.get(client)
+
+        // If client has no subscription (null), send everything (backward compatibility)
+        if (subscribedLang === null || subscribedLang === undefined) {
+          client.send(message)
+          sentCount++
+        }
+        // If message has targetLang, only send to clients subscribed to that language
+        else if (messageData && messageData.targetLang) {
+          if (messageData.targetLang === subscribedLang) {
+            console.log(`[HTTPServer] Sending message to client subscribed to ${subscribedLang}`)
+            client.send(message)
+            sentCount++
+          }
+        }
+        // If message has no targetLang, it's the "all" broadcast
+        else {
+          client.send(message)
+          sentCount++
+        }
       }
     })
+
+    if (messageData?.targetLang) {
+      console.log(`[HTTPServer] Broadcast complete for ${messageData.targetLang}: sent to ${sentCount} clients`)
+    }
   }
 
   getPort(): number {

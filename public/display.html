@@ -113,69 +113,33 @@
         }
 
         .transcription-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
+            font-size: 1.5rem;
+            line-height: 1.8;
+            white-space: normal;
+            word-wrap: break-word;
         }
 
-        .transcription-item {
-            padding: 1.5rem;
-            border-radius: 12px;
+        .transcription-segment {
+            display: inline;
             animation: fadeIn 0.3s ease-in;
-        }
-
-        body.light .transcription-item {
-            background-color: #f5f5f5;
-            border: 1px solid #e0e0e0;
-        }
-
-        body.dark .transcription-item {
-            background-color: #2a2a2a;
-            border: 1px solid #3a3a3a;
         }
 
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(10px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
             }
         }
 
-        .transcription-original {
-            font-size: 1.25rem;
-            line-height: 1.6;
-            margin-bottom: 0.75rem;
-        }
-
-        .transcription-translation {
-            font-size: 1.1rem;
-            line-height: 1.5;
-            opacity: 0.8;
-            padding-top: 0.75rem;
-            border-top: 1px solid;
-        }
-
-        body.light .transcription-translation {
-            border-top-color: #d0d0d0;
-        }
-
-        body.dark .transcription-translation {
-            border-top-color: #404040;
-        }
-
-        .transcription-time {
-            font-size: 0.85rem;
-            opacity: 0.6;
-            margin-top: 0.5rem;
-        }
-
-        .interim {
+        .transcription-segment.interim {
             opacity: 0.6;
             font-style: italic;
+        }
+
+        .transcription-segment.final {
+            opacity: 1;
         }
 
         .empty-state {
@@ -238,14 +202,60 @@
     </div>
 
     <script>
-        // Get port from query parameter or use default
+        // Language mapping from friendly names to language codes
+        const languageMap = {
+            'spanish': 'spa_Latn',
+            'ukrainian': 'ukr_Cyrl',
+            'russian': 'rus_Cyrl',
+            'portuguese': 'por_Latn',
+            'french': 'fra_Latn',
+            'korean': 'kor_Hang',
+            'mandarin': 'zho_Hans',
+            'tagalog': 'tgl_Latn',
+            'vietnamese': 'vie_Latn',
+            'arabic': 'arb_Arab',
+            'hindi': 'hin_Deva',
+            'polish': 'pol_Latn',
+            'romanian': 'ron_Latn'
+        };
+
+        // Language display names
+        const languageNames = {
+            'spa_Latn': 'Spanish',
+            'ukr_Cyrl': 'Ukrainian',
+            'rus_Cyrl': 'Russian',
+            'por_Latn': 'Portuguese',
+            'fra_Latn': 'French',
+            'kor_Hang': 'Korean',
+            'zho_Hans': 'Mandarin Chinese',
+            'tgl_Latn': 'Tagalog',
+            'vie_Latn': 'Vietnamese',
+            'arb_Arab': 'Arabic',
+            'hin_Deva': 'Hindi',
+            'pol_Latn': 'Polish',
+            'ron_Latn': 'Romanian'
+        };
+
+        // Get port and language from query parameters
         const urlParams = new URLSearchParams(window.location.search);
         const port = urlParams.get('port') || window.location.port || '8080';
+        const langParam = urlParams.get('lang');
+        const targetLang = langParam ? languageMap[langParam.toLowerCase()] : null;
         const wsUrl = `ws://localhost:${port}`;
 
         let ws = null;
         let reconnectInterval = null;
         const transcriptions = [];
+
+        // Update page title if language is specified
+        if (targetLang) {
+            const langName = languageNames[targetLang] || langParam;
+            document.title = `Mimiuchi Display - ${langName}`;
+            document.querySelector('.header h1').textContent = `Mimiuchi Display - ${langName}`;
+            console.log('[Display] Configured for language:', langName, '(', targetLang, ')');
+        } else {
+            console.log('[Display] No language filter - showing all messages');
+        }
 
         // Theme management
         const themeToggle = document.getElementById('themeToggle');
@@ -267,6 +277,17 @@
                 ws.onopen = () => {
                     console.log('Connected to Mimiuchi');
                     updateStatus(true);
+
+                    // Send subscription message if language is specified
+                    if (targetLang) {
+                        const subscribeMessage = JSON.stringify({
+                            type: 'subscribe',
+                            targetLang: targetLang
+                        });
+                        ws.send(subscribeMessage);
+                        console.log(`Subscribed to language: ${targetLang}`);
+                    }
+
                     if (reconnectInterval) {
                         clearInterval(reconnectInterval);
                         reconnectInterval = null;
@@ -317,8 +338,17 @@
         }
 
         function handleMessage(data) {
+            console.log('[Display] Received message:', data);
+
             // Handle different message types
             if (data.type === 'text') {
+                console.log('[Display] Processing text message:', {
+                    hasTranscript: !!data.data?.transcript,
+                    hasTranslation: !!data.data?.translation,
+                    targetLang: data.data?.targetLang,
+                    languageName: data.data?.languageName,
+                    isFinal: data.data?.isFinal
+                });
                 updateTranscription(data.data);
             }
         }
@@ -330,6 +360,13 @@
             const emptyState = list.querySelector('.empty-state');
             if (emptyState) {
                 emptyState.remove();
+                console.log('[Display] Removed empty state, first message received');
+            }
+
+            // Skip if no transcript/translation content
+            if (!log.transcript && !log.translation) {
+                console.log('[Display] Skipping message with no content');
+                return;
             }
 
             // Find or create transcription item
@@ -339,18 +376,22 @@
                 existingIndex = transcriptions.length - 1;
                 if (existingIndex >= 0 && !transcriptions[existingIndex].isFinal) {
                     transcriptions[existingIndex] = log;
+                    console.log('[Display] Updated interim transcription at index', existingIndex);
                 } else {
                     transcriptions.push(log);
                     existingIndex = transcriptions.length - 1;
+                    console.log('[Display] Added new interim transcription at index', existingIndex);
                 }
             } else {
                 // Add as final transcription
                 existingIndex = transcriptions.length - 1;
                 if (existingIndex >= 0 && !transcriptions[existingIndex].isFinal) {
                     transcriptions[existingIndex] = log;
+                    console.log('[Display] Finalized interim transcription at index', existingIndex);
                 } else {
                     transcriptions.push(log);
                     existingIndex = transcriptions.length - 1;
+                    console.log('[Display] Added new final transcription at index', existingIndex);
                 }
             }
 
@@ -362,33 +403,23 @@
             const list = document.getElementById('transcriptionList');
             list.innerHTML = '';
 
-            // Only show last 10 transcriptions
-            const recentTranscriptions = transcriptions.slice(-10);
-
-            recentTranscriptions.forEach((log, index) => {
-                const item = document.createElement('div');
-                item.className = `transcription-item ${!log.isFinal ? 'interim' : ''}`;
-
-                const original = document.createElement('div');
-                original.className = 'transcription-original';
-                original.textContent = log.transcript;
-                item.appendChild(original);
-
-                if (log.translation) {
-                    const translation = document.createElement('div');
-                    translation.className = 'transcription-translation';
-                    translation.textContent = log.translation;
-                    item.appendChild(translation);
+            // Show all transcriptions as continuous flowing text
+            transcriptions.forEach((log, index) => {
+                // Only show translation text, skip if no translation
+                if (!log.translation) {
+                    return;
                 }
 
-                if (log.time) {
-                    const time = document.createElement('div');
-                    time.className = 'transcription-time';
-                    time.textContent = new Date(log.time).toLocaleTimeString();
-                    item.appendChild(time);
+                const segment = document.createElement('span');
+                segment.className = `transcription-segment ${log.isFinal ? 'final' : 'interim'}`;
+                segment.textContent = log.translation;
+
+                // Add space between segments
+                if (index > 0) {
+                    list.appendChild(document.createTextNode(' '));
                 }
 
-                list.appendChild(item);
+                list.appendChild(segment);
             });
 
             // Auto-scroll to bottom

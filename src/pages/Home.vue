@@ -3,25 +3,6 @@
     id="log-list" v-resize="onResize" class="fill-height pa-4 overflow-auto log-list"
     :color="appearanceStore.ui.color" :height="height - (appearanceStore.footer_size ? 200 : 55)" tile
   >
-    <!-- Language Selector - Only show when translation is enabled -->
-    <v-row v-if="translationStore.enabled && is_electron()" class="mb-4">
-      <v-col cols="12">
-        <v-select
-          v-model="translationStore.target"
-          :items="availableLanguages"
-          label="Translation Language"
-          variant="outlined"
-          density="compact"
-          hide-details
-          @update:model-value="onLanguageChange"
-        >
-          <template #prepend-inner>
-            <v-icon>mdi-translate</v-icon>
-          </template>
-        </v-select>
-      </v-col>
-    </v-row>
-
     <!-- Display Mode Selector - Only show when translation is enabled -->
     <v-row v-if="translationStore.enabled && is_electron()" class="mb-2">
       <v-col cols="12">
@@ -119,27 +100,6 @@ const settingsStore = useSettingsStore()
 const appearanceStore = useAppearanceStore()
 const logsStore = useLogsStore()
 const translationStore = useTranslationStore()
-
-// Available translation languages
-const availableLanguages = ref([
-  { title: 'Spanish (Español)', value: 'spa_Latn' },
-  { title: 'Ukrainian (Українська)', value: 'ukr_Cyrl' },
-  { title: 'Russian (Русский)', value: 'rus_Cyrl' },
-  { title: 'Portuguese (Português)', value: 'por_Latn' },
-  { title: 'French (Français)', value: 'fra_Latn' },
-  { title: 'Korean (한국어)', value: 'kor_Hang' },
-  { title: 'Mandarin (中文)', value: 'zho_Hans' },
-  { title: 'Tagalog', value: 'tgl_Latn' },
-  { title: 'Vietnamese (Tiếng Việt)', value: 'vie_Latn' },
-  { title: 'Arabic (العربية)', value: 'arb_Arab' },
-  { title: 'Hindi (हिन्दी)', value: 'hin_Deva' },
-  { title: 'Polish (Polski)', value: 'pol_Latn' },
-])
-
-function onLanguageChange(newLang: string) {
-  console.log('Translation language changed to:', newLang)
-  // The translation will automatically update via the store reactivity
-}
 
 // Helper function to determine if displayed text is final based on display mode
 function isTextFinal(log: any): boolean {
