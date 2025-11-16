@@ -250,8 +250,8 @@ watch(() => defaultStore.broadcasting, (newValue) => {
   }
 })
 
-// Reload when connection port changes
-watch(connectionPort, () => {
+// Reload when HTTP server port changes
+watch(httpServerPort, () => {
   if (showConnectionInfo.value) {
     loadNetworkInfo()
   }
