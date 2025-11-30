@@ -17,6 +17,7 @@ import { WebSpeech, Whisper, Deepgram } from '@/modules/speech'
 import yukumo from '@/constants/voices/yukumo'
 import tiktok from '@/constants/voices/tiktok'
 import webhook from '@/helpers/webhook'
+import { filterProfanity } from '@/helpers/profanity_filter'
 
 export interface ListItem {
   title: string
@@ -275,8 +276,8 @@ export const useSpeechStore = defineStore('speech', () => {
         if (openConnection) openConnection.send(rendered_payload)
       }
 
-      // Broadcast to HTTP server display clients (regardless of realtime_text setting)
-      if (defaultStore.broadcasting && is_electron()) {
+      // Broadcast to HTTP server display clients ONLY for final results (prevents blinking)
+      if (defaultStore.broadcasting && is_electron() && isFinal) {
         window.ipcRenderer.send('httpserver-broadcast', rendered_payload)
       }
     }
@@ -366,6 +367,10 @@ export const useSpeechStore = defineStore('speech', () => {
 
     // word replace
     log.transcript = replace_words(log.transcript)
+
+    // Apply profanity filter with church context awareness
+    log.transcript = filterProfanity(log.transcript, false) // false = not strict mode, allows contextual religious words
+
     if (!log.transcript.trim()) { // If the processed input is only whitespace, do nothing. This may occur if the entire log transcript was replaced with whitespace.
       logsStore.loading_result = false
 
@@ -387,6 +392,12 @@ export const useSpeechStore = defineStore('speech', () => {
       i++
     }
 
+    // Apply rolling window to prevent memory bloat during long sessions
+    // Only trim when adding final transcriptions to avoid disrupting interim updates
+    if (log.isFinal) {
+      logsStore.trimLogs()
+    }
+
     // new line delay
     if (logsStore.wait_interval)
       clearTimeout(logsStore.wait_interval)
@@ -404,45 +415,44 @@ export const useSpeechStore = defineStore('speech', () => {
 
       // Add to multi-translation system
       const logIndex = multiTranslationStore.addTranslationLog(log.transcript, true)
-      console.log('[Speech] Added translation log, index:', logIndex, 'transcript:', log.transcript.substring(0, 50))
+      // console.log('[Speech] Added translation log, index:', logIndex, 'transcript:', log.transcript.substring(0, 50))
 
       // Multi-language translation - works independently of main translation toggle
-      console.log('[Speech] Checking multi-language translation conditions:', {
-        isElectron: is_electron(),
-        enabledStreamsCount: multiTranslationStore.enabledStreams.length,
-        notAlreadyTranslating: !log.translate,
-        hasApiKey: !!translationStore.openai_api_key,
-      })
+      // ONLY translate final results to reduce API usage (skip interim results)
+      if (is_electron() && multiTranslationStore.enabledStreams.length > 0 && !log.translate && log.isFinal) {
+        // Use translationStore.type as provider (it holds 'OpenAI' or 'DeepL')
+        const provider = translationStore.type
+        window.ipcRenderer.send('set-translation-provider', provider)
 
-      if (is_electron() && multiTranslationStore.enabledStreams.length > 0 && !log.translate) {
-        console.log('[Speech] Multi-language translation conditions met, proceeding...')
-
-        // Send API key to worker if it's set
-        if (translationStore.openai_api_key) {
-          console.log('[Speech] Sending API key to worker')
-          window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
-        } else {
-          console.warn('[Speech] No OpenAI API key set! Translations will fail.')
+        if (provider === 'DeepL') {
+          if (translationStore.deepl_api_key) {
+            window.ipcRenderer.send('set-deepl-api-key', translationStore.deepl_api_key)
+          } else {
+            console.warn('[Speech] No DeepL API key set! Translations will fail.')
+          }
+        } else if (provider === 'OpenAI') {
+          if (translationStore.openai_api_key) {
+            window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
+          } else {
+            console.warn('[Speech] No OpenAI API key set! Translations will fail.')
+          }
         }
 
         // Queue translations for all enabled languages
-        console.log('[Speech] Calling addMultiLanguageTasks with:', {
-          transcript: log.transcript.substring(0, 50),
-          source: translationStore.source,
-          logIndex,
-        })
         translationQueue.addMultiLanguageTasks(
           log.transcript,
           translationStore.source,
           logIndex,
         )
-      } else {
-        console.log('[Speech] Multi-language translation conditions NOT met, skipping')
       }
 
       // Single translation - only when main translation toggle is enabled
-      if (is_electron() && translationStore.enabled && !log.translate && !log.translation) {
-        logsStore.logs[i].translate = true
+      // Skip if multi-language is active to avoid duplicate translations
+      if (is_electron() && translationStore.enabled && !log.translate && !log.translation && multiTranslationStore.enabledStreams.length === 0) {
+        // Bounds check after trim
+        if (i < logsStore.logs.length && logsStore.logs[i]) {
+          logsStore.logs[i].translate = true
+        }
 
         // Send API key to worker if it's set (in case multi-language didn't run)
         if (translationStore.openai_api_key) {
@@ -458,23 +468,34 @@ export const useSpeechStore = defineStore('speech', () => {
         })
       }
 
-      // timestamp
-      logsStore.logs[i].time = new Date()
-      // text-to-speech
-      if (tts.value.enabled && tts.value.voice)
-        speak(log.transcript)
+      // Bounds check after trim - prevent accessing undefined index
+      if (i < logsStore.logs.length && logsStore.logs[i]) {
+        // timestamp
+        logsStore.logs[i].time = new Date()
+        // text-to-speech
+        if (tts.value.enabled && tts.value.voice)
+          speak(log.transcript)
+      }
 
       // fadeout text
       if (text.enable_fade) {
         setTimeout(() => {
-          if (!logsStore.logs[i].pause)
+          // Bounds check in async callback
+          if (i >= logsStore.logs.length || !logsStore.logs[i] || !logsStore.logs[i].pause)
             return
 
           let pauses = 0
           // fade out all text since last pause
           while (i >= 0 && pauses < 2) {
+            // Bounds check - log may have been trimmed
+            if (!logsStore.logs[i]) break
             logsStore.logs[i].hide = 1
-            setTimeout(i => logsStore.logs[i].hide = 2, text.fade_time * 1000, i)
+            setTimeout((idx) => {
+              // Bounds check in async callback
+              if (logsStore.logs[idx]) {
+                logsStore.logs[idx].hide = 2
+              }
+            }, text.fade_time * 1000, i)
             if (logsStore.logs[i].pause)
               pauses += 1
             i -= 1

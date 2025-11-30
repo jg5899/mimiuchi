@@ -21,7 +21,44 @@ pinia.use(storeReset)
 
 const app_name = 'mimiuchi'
 
-createApp(App)
+const app = createApp(App)
+
+// Add global error handler for better error recovery
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[Vue Error Handler]', {
+    error: err,
+    component: instance?.$options?.name || 'Unknown',
+    info,
+    stack: err instanceof Error ? err.stack : null,
+  })
+
+  // Try to show user-friendly error message
+  try {
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    console.error(`Vue Error: ${errorMessage} (${info})`)
+
+    // Optionally show snackbar if available (don't crash if it's not)
+    if (instance && typeof instance === 'object' && 'proxy' in instance) {
+      const defaultStore = (instance.proxy as any)?.$root?.$defaultStore
+      if (defaultStore && typeof defaultStore.show_snackbar === 'function') {
+        defaultStore.show_snackbar('error', `Error: ${errorMessage}`)
+      }
+    }
+  } catch (handlerError) {
+    console.error('[Error Handler] Failed to handle error:', handlerError)
+  }
+}
+
+// Add global warning handler
+app.config.warnHandler = (msg, instance, trace) => {
+  console.warn('[Vue Warning]', {
+    message: msg,
+    component: instance?.$options?.name || 'Unknown',
+    trace,
+  })
+}
+
+app
   .use(vuetify)
   .use(pinia)
   .use(router)

@@ -1,5 +1,77 @@
 declare const window: any
 
+// Biblical vocabulary for improved STT accuracy in church contexts
+const BIBLICAL_VOCABULARY = [
+  // Names of God & Jesus
+  'Jesus', 'Christ', 'Messiah', 'Lord', 'God', 'Yahweh', 'Jehovah', 'Almighty',
+  'Father', 'Son', 'Holy Spirit', 'Holy Ghost', 'Savior', 'Redeemer', 'Emmanuel',
+
+  // Bible Books - Old Testament
+  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges',
+  'Ruth', 'Samuel', 'Kings', 'Chronicles', 'Ezra', 'Nehemiah', 'Esther', 'Job',
+  'Psalms', 'Proverbs', 'Ecclesiastes', 'Solomon', 'Isaiah', 'Jeremiah',
+  'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos', 'Obadiah',
+  'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
+
+  // Bible Books - New Testament
+  'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', 'Corinthians', 'Galatians',
+  'Ephesians', 'Philippians', 'Colossians', 'Thessalonians', 'Timothy', 'Titus',
+  'Philemon', 'Hebrews', 'James', 'Peter', 'Jude', 'Revelation',
+
+  // Biblical People
+  'Abraham', 'Isaac', 'Jacob', 'Moses', 'David', 'Solomon', 'Elijah', 'Elisha',
+  'Isaiah', 'Jeremiah', 'Daniel', 'Paul', 'Peter', 'John', 'James', 'Mary',
+  'Joseph', 'Adam', 'Eve', 'Noah', 'Sarah', 'Rebecca', 'Rachel', 'Leah',
+  'Pharaoh', 'Pilate', 'Herod', 'Lazarus', 'Martha', 'Nicodemus', 'Barnabas',
+
+  // Biblical Places
+  'Jerusalem', 'Israel', 'Bethlehem', 'Nazareth', 'Galilee', 'Jordan', 'Egypt',
+  'Babylon', 'Canaan', 'Zion', 'Calvary', 'Golgotha', 'Gethsemane', 'Sinai',
+
+  // Theological Terms
+  'salvation', 'redemption', 'sanctification', 'justification', 'righteousness',
+  'atonement', 'grace', 'mercy', 'forgiveness', 'repentance', 'baptism',
+  'communion', 'resurrection', 'crucifixion', 'gospel', 'scripture', 'prophecy',
+  'covenant', 'testament', 'commandments', 'beatitudes', 'parable', 'miracle',
+  'faith', 'hope', 'love', 'sin', 'transgression', 'iniquity', 'confession',
+  'intercession', 'supplication', 'thanksgiving', 'worship', 'praise', 'prayer',
+  'tithe', 'offering', 'sacrifice', 'blessing', 'anointing', 'consecration',
+
+  // Church Terms
+  'congregation', 'fellowship', 'ministry', 'sermon', 'pastor', 'preacher',
+  'deacon', 'elder', 'apostle', 'disciple', 'believer', 'Christian',
+  'church', 'sanctuary', 'altar', 'pulpit', 'choir', 'hymn', 'psalm',
+
+  // Common Phrases
+  'Amen', 'Hallelujah', 'Hosanna', 'Alleluia', 'Maranatha', 'Selah',
+  'born again', 'eternal life', 'kingdom of God', 'kingdom of heaven',
+  'Holy Bible', 'Word of God', 'Good News', 'Great Commission',
+
+  // Trinity Community Church - Staff & Leadership
+  'Trinity Community Church', 'Trinity', 'TCC',
+  'Aaron Lipinski', 'Andrei Sava', 'Angelina Matchain', 'Bryan Frazier',
+  'Bryce Naylor', 'Chris Nickel', 'Chuck Shillito', 'Daniel Garcia',
+  'Dorothy Doswald', 'Emily Ladd', 'Emma Shapazian', 'Guillermo Matchain',
+  'Heather Jensen', 'Hillary Belmont', 'Jaimi Fong', 'James Bernabe',
+  'John Baker', 'Jordan Potter', 'Josh Garcia', 'Kevin Lockwood',
+  'Laura Barth', 'Lisa Richardson', 'Martine Cox', 'Matt Harder',
+  'Monica Gutierrez', 'Nathan Belknap', 'Nathanael Cervantes', 'Noah Potter',
+  'Rachel Golding', 'Sam Musgrave', 'Sean Cox', 'Shanna Frost',
+  // Trinity Elders
+  'Cameron Fong', 'John Blackburn', 'Keith De', 'Larry Parker',
+  'Randy Larson', 'Rick Wood', 'Scott Beckman',
+
+  // Trinity Ministries & Programs
+  'Adult Discipleship', 'Biblical Counseling', 'Fellowship Groups',
+  'High School Ministry', 'Junior High Ministry', 'Student Ministries',
+  'Young Adults', 'Newly Marrieds', 'Preschool Ministries', 'Sunday School',
+  'Prayer Ministries', 'Worship Ministries', 'Welcoming Ministries',
+  'Trinity Missions', 'Midweek Bible', 'Special Events', 'Pastoral Care',
+
+  // Local Places (Fresno area)
+  'Fresno', 'Clovis', 'Willow Ave', 'Fresno State', 'Fresno Pacific',
+]
+
 class Deepgram {
   recorded: Blob | null = null
 
@@ -100,6 +172,9 @@ class Deepgram {
   }
 
   connectWebSocket() {
+    // Cleanup any existing WebSocket before creating a new one to prevent duplicates
+    this.cleanupWebSocket()
+
     // Construct WebSocket URL with Deepgram parameters
     const params = new URLSearchParams({
       model: 'nova-2',
@@ -110,11 +185,18 @@ class Deepgram {
       endpointing: '300', // 300ms silence before finalizing
       encoding: 'linear16',
       sample_rate: '16000',
+      // Accuracy improvements
+      filler_words: 'false', // Remove "um", "uh", etc.
+      numerals: 'true', // Better number formatting (e.g., "John 3:16")
+      profanity_filter: 'false', // We handle this ourselves with church context
     })
 
-    // Add custom keywords if provided
-    if (this.customKeywords.length > 0) {
-      params.append('keywords', this.customKeywords.join(','))
+    // Combine biblical vocabulary with user's custom keywords
+    const allKeywords = [...BIBLICAL_VOCABULARY, ...this.customKeywords]
+    // Deepgram limits keywords, so take unique values
+    const uniqueKeywords = [...new Set(allKeywords)]
+    if (uniqueKeywords.length > 0) {
+      params.append('keywords', uniqueKeywords.join(','))
     }
 
     const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`
@@ -166,7 +248,7 @@ class Deepgram {
           return
         }
 
-        // Set reconnecting flag to prevent simultaneous reconnections
+        // Set reconnecting flag IMMEDIATELY to prevent simultaneous reconnections
         this.isReconnecting = true
         this.reconnectAttempts++
 
@@ -180,6 +262,7 @@ class Deepgram {
             this.connectWebSocket()
             this.startAudioStream()
           }
+          // Reset flag AFTER reconnection attempt
           this.isReconnecting = false
         }, backoffDelay)
       }
@@ -188,6 +271,9 @@ class Deepgram {
 
   startAudioStream() {
     if (!this.stream_ref || !this.socket) return
+
+    // Always cleanup existing audio stream before creating a new one to prevent duplicates
+    this.cleanupAudioStream()
 
     this.audioContext = new AudioContext({ sampleRate: 16000 })
     const source = this.audioContext.createMediaStreamSource(this.stream_ref)

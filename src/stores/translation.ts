@@ -6,13 +6,14 @@ import { useSpeechStore } from '@/stores/speech'
 
 export const useTranslationStore = defineStore('translation', () => {
   const enabled = ref(false)
-  const type = ref('OpenAI')
+  const type = ref('OpenAI') // 'OpenAI' or 'DeepL'
   const source = ref('eng_Latn')
   const target = ref('jpn_Jpan')
   const download = ref(-1) // percent downloaded 0-100. -1 = done
   const show_original = ref(true)
   const display_mode = ref<'original' | 'translation' | 'both'>('translation') // What to show in main window
   const openai_api_key = ref('')
+  const deepl_api_key = ref('')
   const use_context = ref(false)
   const context_window_size = ref(3)
 
@@ -47,20 +48,14 @@ export const useTranslationStore = defineStore('translation', () => {
           logsStore.loading_result = false
           logsStore.logs[data.index].translation = '[Translation Error]'
           logsStore.logs[data.index].isTranslationFinal = true
-
-          // Broadcast error state to clients
-          const { on_submit } = useSpeechStore()
-          on_submit(logsStore.logs[data.index], data.index)
+          // Note: Broadcasting handled by multi-translation system, not here
           break
         }
-
-        const { on_submit } = useSpeechStore()
 
         logsStore.logs[data.index].translation = data.output[0].translation_text
         logsStore.loading_result = false
         logsStore.logs[data.index].isTranslationFinal = true
-
-        on_submit(logsStore.logs[data.index], data.index)
+        // Note: Broadcasting handled by multi-translation system, not here
         break
       }
       case 'error': {
@@ -70,10 +65,7 @@ export const useTranslationStore = defineStore('translation', () => {
         if (data.index !== undefined && logsStore.logs[data.index]) {
           logsStore.logs[data.index].translation = '[Translation Error]'
           logsStore.logs[data.index].isTranslationFinal = true
-
-          // Broadcast error state to clients
-          const { on_submit } = useSpeechStore()
-          on_submit(logsStore.logs[data.index], data.index)
+          // Note: Broadcasting handled by multi-translation system, not here
         }
         // Don't disable translation - allow retries for future text
         break
@@ -89,6 +81,7 @@ export const useTranslationStore = defineStore('translation', () => {
     show_original,
     display_mode,
     openai_api_key,
+    deepl_api_key,
     use_context,
     context_window_size,
     onMessageReceived,

@@ -121,25 +121,44 @@
 
         .transcription-segment {
             display: inline;
-            animation: fadeIn 0.3s ease-in;
+            animation: fadeInSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
 
-        @keyframes fadeIn {
+        @keyframes fadeInSlide {
             from {
                 opacity: 0;
+                transform: translateY(10px);
             }
             to {
                 opacity: 1;
+                transform: translateY(0);
             }
         }
 
         .transcription-segment.interim {
-            opacity: 0.6;
+            opacity: 0.65;
             font-style: italic;
+            color: inherit;
+            filter: brightness(0.9);
         }
 
         .transcription-segment.final {
             opacity: 1;
+            font-weight: 400;
+            animation: finalizeText 0.2s ease-out;
+        }
+
+        @keyframes finalizeText {
+            0% {
+                transform: scale(0.98);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+            100% {
+                transform: scale(1);
+            }
         }
 
         .empty-state {
@@ -241,7 +260,9 @@
         const port = urlParams.get('port') || window.location.port || '8080';
         const langParam = urlParams.get('lang');
         const targetLang = langParam ? languageMap[langParam.toLowerCase()] : null;
-        const wsUrl = `ws://localhost:${port}`;
+        // Use window.location.hostname to connect to the same host that served this page
+        // This ensures it works both locally (localhost) and remotely (192.168.x.x)
+        const wsUrl = `ws://${window.location.hostname}:${port}`;
 
         let ws = null;
         let reconnectInterval = null;
@@ -355,6 +376,7 @@
 
         function updateTranscription(log) {
             const list = document.getElementById('transcriptionList');
+            const MAX_TRANSCRIPTIONS = 50;
 
             // Remove empty state if it exists
             const emptyState = list.querySelector('.empty-state');
@@ -395,38 +417,103 @@
                 }
             }
 
+            // Apply rolling window: keep only last MAX_TRANSCRIPTIONS entries
+            if (transcriptions.length > MAX_TRANSCRIPTIONS) {
+                const itemsToRemove = transcriptions.length - MAX_TRANSCRIPTIONS;
+                transcriptions.splice(0, itemsToRemove);
+                console.log('[Display] Trimmed transcriptions array, removed', itemsToRemove, 'old entries');
+
+                // Adjust lastRenderedCount instead of resetting to prevent full re-render
+                lastRenderedCount = Math.max(0, lastRenderedCount - itemsToRemove);
+
+                // Remove corresponding DOM elements from the beginning
+                const list = document.getElementById('transcriptionList');
+                for (let i = 0; i < itemsToRemove && list.children.length > 0; i++) {
+                    // Remove both the span element and the preceding text node (space)
+                    if (list.children.length > 0) {
+                        list.removeChild(list.firstChild);
+                        // Also remove the space text node if it exists
+                        if (list.firstChild && list.firstChild.nodeType === Node.TEXT_NODE) {
+                            list.removeChild(list.firstChild);
+                        }
+                    }
+                }
+            }
+
             // Render all transcriptions
             renderTranscriptions();
         }
 
+        let lastRenderedCount = 0;
+
         function renderTranscriptions() {
             const list = document.getElementById('transcriptionList');
-            list.innerHTML = '';
 
-            // Show all transcriptions as continuous flowing text
-            transcriptions.forEach((log, index) => {
-                // Only show translation text, skip if no translation
-                if (!log.translation) {
-                    return;
+            // Only append NEW items instead of rebuilding everything (prevents blinking)
+            // Show translation if available, otherwise show transcript (fallback for when translations fail/pending)
+            const validTranscriptions = transcriptions.filter(log => log.translation || log.transcript);
+
+            // If we reset lastRenderedCount (due to trimming), rebuild the entire DOM
+            if (lastRenderedCount === 0 && validTranscriptions.length > 0) {
+                // Clear all existing DOM elements
+                list.innerHTML = '';
+
+                // Render all valid transcriptions
+                for (let i = 0; i < validTranscriptions.length; i++) {
+                    const log = validTranscriptions[i];
+
+                    const segment = document.createElement('span');
+                    segment.className = `transcription-segment ${log.isFinal ? 'final' : 'interim'}`;
+                    // Show translation if available, otherwise show transcript as fallback
+                    segment.textContent = log.translation || log.transcript;
+
+                    // Add space before segment (except first one)
+                    if (i > 0) {
+                        list.appendChild(document.createTextNode(' '));
+                    }
+
+                    list.appendChild(segment);
                 }
 
-                const segment = document.createElement('span');
-                segment.className = `transcription-segment ${log.isFinal ? 'final' : 'interim'}`;
-                segment.textContent = log.translation;
+                lastRenderedCount = validTranscriptions.length;
 
-                // Add space between segments
-                if (index > 0) {
-                    list.appendChild(document.createTextNode(' '));
+                // Auto-scroll to bottom to show newest text
+                requestAnimationFrame(() => {
+                    window.scrollTo({
+                        top: document.body.scrollHeight,
+                        behavior: 'smooth'
+                    });
+                });
+            }
+            // Check if we have new items to add
+            else if (validTranscriptions.length > lastRenderedCount) {
+                // Append only the new items
+                for (let i = lastRenderedCount; i < validTranscriptions.length; i++) {
+                    const log = validTranscriptions[i];
+
+                    const segment = document.createElement('span');
+                    segment.className = `transcription-segment ${log.isFinal ? 'final' : 'interim'}`;
+                    // Show translation if available, otherwise show transcript as fallback
+                    segment.textContent = log.translation || log.transcript;
+
+                    // Add space before segment (except first one)
+                    if (list.children.length > 0) {
+                        list.appendChild(document.createTextNode(' '));
+                    }
+
+                    list.appendChild(segment);
                 }
 
-                list.appendChild(segment);
-            });
+                lastRenderedCount = validTranscriptions.length;
 
-            // Auto-scroll to bottom
-            window.scrollTo({
-                top: document.body.scrollHeight,
-                behavior: 'smooth'
-            });
+                // Auto-scroll to bottom to show newest text
+                requestAnimationFrame(() => {
+                    window.scrollTo({
+                        top: document.body.scrollHeight,
+                        behavior: 'smooth'
+                    });
+                });
+            }
         }
 
         // Initialize connection

@@ -154,9 +154,32 @@ function getTransformersWorker(): Worker {
         console.warn('[Main Worker] Window is destroyed or null, cannot send message')
       }
     })
+
+    // Add error handler for worker
+    transformersWorker.on('error', (error) => {
+      console.error('[Main Worker] Translation worker error:', error)
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('main-process-message', `Translation worker error: ${error.message}`)
+      }
+    })
+
+    // Add exit handler for worker
+    transformersWorker.on('exit', (code) => {
+      console.log(`[Main Worker] Translation worker exited with code ${code}`)
+      transformersWorker = null
+    })
   }
 
   return transformersWorker
+}
+
+// Terminate worker on app quit
+function terminateTransformersWorker() {
+  if (transformersWorker) {
+    console.log('[Main] Terminating translation worker')
+    transformersWorker.terminate()
+    transformersWorker = null
+  }
 }
 
 app.whenReady().then(() => {
@@ -165,7 +188,18 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   win = null
+  terminateTransformersWorker()
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  console.log('[Main] App quitting, cleaning up resources')
+  terminateTransformersWorker()
+
+  // Stop HTTP server if running
+  if (httpServer) {
+    httpServer.stop().catch(err => console.error('Error stopping HTTP server:', err))
+  }
 })
 
 app.on('second-instance', () => {
@@ -250,6 +284,16 @@ ipcMain.on('transformers-translate-multi', async (event, args) => {
 ipcMain.on('set-translation-api-key', async (event, apiKey) => {
   console.log('[Main IPC] Received set-translation-api-key, length:', apiKey?.length)
   getTransformersWorker().postMessage({ type: 'set-api-key', apiKey })
+})
+
+ipcMain.on('set-deepl-api-key', async (event, apiKey) => {
+  console.log('[Main IPC] Received set-deepl-api-key, length:', apiKey?.length)
+  getTransformersWorker().postMessage({ type: 'set-deepl-api-key', apiKey })
+})
+
+ipcMain.on('set-translation-provider', async (event, provider) => {
+  console.log('[Main IPC] Received set-translation-provider:', provider)
+  getTransformersWorker().postMessage({ type: 'set-translation-provider', provider })
 })
 
 // HTTP Server handlers

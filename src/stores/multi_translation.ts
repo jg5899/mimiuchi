@@ -129,6 +129,8 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
 
   // Add a new translation log
   function addTranslationLog(transcript: string, isFinal: boolean = false) {
+    const MAX_LOGS = 100
+
     const log: TranslationLog = {
       transcript,
       translations: {},
@@ -136,6 +138,14 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
       time: new Date(),
     }
     multiLogs.value.push(log)
+
+    // Apply rolling window: keep only last MAX_LOGS entries
+    if (multiLogs.value.length > MAX_LOGS) {
+      const itemsToRemove = multiLogs.value.length - MAX_LOGS
+      multiLogs.value.splice(0, itemsToRemove)
+      console.log('[MultiTranslation] Trimmed multiLogs array, removed', itemsToRemove, 'old entries')
+    }
+
     return multiLogs.value.length - 1
   }
 

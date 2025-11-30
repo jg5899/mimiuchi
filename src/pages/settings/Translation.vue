@@ -66,6 +66,21 @@
             </template>
           </v-text-field>
         </v-col>
+        <v-col v-if="translationStore.type === 'DeepL'" :cols="12">
+          <v-text-field
+            v-model="translationStore.deepl_api_key"
+            label="DeepL API Key"
+            placeholder="Get free key at deepl.com/pro-api"
+            variant="outlined"
+            type="password"
+            hint="Free tier: 500,000 characters/month"
+            persistent-hint
+          >
+            <template #prepend-inner>
+              <v-icon icon="mdi-key" />
+            </template>
+          </v-text-field>
+        </v-col>
         <v-col v-if="translation_types.find(o => o.type === 'local')" :cols="12">
           <v-alert variant="outlined" type="info" prominent>
             <v-alert-title class="text-subtitle-1">
@@ -185,6 +200,11 @@ const translation_types = ref([
   {
     title: 'OpenAI GPT-4o-mini (Cloud)',
     value: 'OpenAI',
+    type: 'cloud',
+  },
+  {
+    title: 'DeepL (Cloud - Free 500k chars/month)',
+    value: 'DeepL',
     type: 'cloud',
   },
 ])

@@ -16,10 +16,24 @@ class HttpServer {
   private isRunning: boolean = false
   // Track language subscriptions per WebSocket connection
   private subscriptions: Map<WebSocket, string | null> = new Map()
+  // Cache display.html to avoid reading from disk on every request
+  private cachedDisplayHtml: Buffer | null = null
+  // Connection tracking
+  private readonly MAX_CONNECTIONS: number = 50
+  private connectionCount: number = 0
 
   constructor(config: HttpServerConfig) {
     this.port = config.port
     this.publicPath = config.publicPath
+
+    // Cache display.html on construction
+    try {
+      const filePath = path.join(this.publicPath, 'display.html')
+      this.cachedDisplayHtml = fs.readFileSync(filePath)
+      console.log('[HTTPServer] Cached display.html file')
+    } catch (error) {
+      console.error('[HTTPServer] Failed to cache display.html:', error)
+    }
   }
 
   start(): Promise<void> {
@@ -29,28 +43,57 @@ class HttpServer {
         return
       }
 
-      // Create HTTP server
+      // Create HTTP server with cached file serving
       this.server = http.createServer((req, res) => {
-        // Serve display.html for all requests
-        const filePath = path.join(this.publicPath, 'display.html')
-
-        fs.readFile(filePath, (err, data) => {
-          if (err) {
-            res.writeHead(404, { 'Content-Type': 'text/plain' })
-            res.end('404 Not Found')
-            return
-          }
-
-          res.writeHead(200, { 'Content-Type': 'text/html' })
-          res.end(data)
-        })
+        // Serve cached display.html for all requests
+        if (this.cachedDisplayHtml) {
+          res.writeHead(200, {
+            'Content-Type': 'text/html',
+            'Cache-Control': 'no-cache',
+          })
+          res.end(this.cachedDisplayHtml)
+        } else {
+          // Fallback to reading from disk if cache failed
+          const filePath = path.join(this.publicPath, 'display.html')
+          fs.readFile(filePath, (err, data) => {
+            if (err) {
+              res.writeHead(404, { 'Content-Type': 'text/plain' })
+              res.end('404 Not Found')
+              return
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' })
+            res.end(data)
+          })
+        }
       })
 
-      // Create WebSocket server attached to HTTP server
-      this.wss = new WebSocketServer({ server: this.server })
+      // Create WebSocket server with compression enabled
+      this.wss = new WebSocketServer({
+        server: this.server,
+        perMessageDeflate: {
+          zlibDeflateOptions: {
+            chunkSize: 1024,
+            memLevel: 7,
+            level: 3,
+          },
+          zlibInflateOptions: {
+            chunkSize: 10 * 1024,
+          },
+          threshold: 1024, // Only compress messages larger than 1KB
+        },
+      })
 
-      this.wss.on('connection', (ws) => {
-        console.log('Display client connected via WebSocket')
+      this.wss.on('connection', (ws, req) => {
+        // Check connection limit
+        if (this.connectionCount >= this.MAX_CONNECTIONS) {
+          console.warn('[HTTPServer] Max connections reached, rejecting client')
+          ws.close(1008, 'Server at capacity')
+          return
+        }
+
+        this.connectionCount++
+        const clientIp = req.socket.remoteAddress
+        console.log(`[HTTPServer] Display client connected (${this.connectionCount}/${this.MAX_CONNECTIONS}) from ${clientIp}`)
 
         // Initialize with no language filter (show all by default)
         this.subscriptions.set(ws, null)
@@ -60,29 +103,44 @@ class HttpServer {
           try {
             const message = JSON.parse(data.toString())
             if (message.type === 'subscribe' && message.targetLang) {
-              console.log(`Client subscribed to language: ${message.targetLang}`)
+              console.log(`[HTTPServer] Client subscribed to language: ${message.targetLang}`)
               this.subscriptions.set(ws, message.targetLang)
             }
           } catch (error) {
-            console.error('Error parsing WebSocket message:', error)
+            console.error('[HTTPServer] Error parsing WebSocket message:', error)
           }
         })
 
         ws.on('close', () => {
-          console.log('Display client disconnected')
+          this.connectionCount--
+          console.log(`[HTTPServer] Display client disconnected (${this.connectionCount}/${this.MAX_CONNECTIONS})`)
           // Clean up subscription tracking
           this.subscriptions.delete(ws)
         })
 
         ws.on('error', (error) => {
-          console.error('WebSocket error:', error)
+          console.error('[HTTPServer] WebSocket error:', error)
+          // Clean up on error
+          this.subscriptions.delete(ws)
+          this.connectionCount--
+        })
+
+        // Set up ping/pong to detect dead connections
+        const pingInterval = setInterval(() => {
+          if (ws.readyState === 1) { // WebSocket.OPEN
+            ws.ping()
+          }
+        }, 30000) // Ping every 30 seconds
+
+        ws.on('close', () => {
+          clearInterval(pingInterval)
         })
       })
 
-      // Start listening
-      this.server.listen(this.port, () => {
+      // Start listening on all network interfaces (0.0.0.0)
+      this.server.listen(this.port, '0.0.0.0', () => {
         this.isRunning = true
-        console.log(`HTTP server running on http://localhost:${this.port}`)
+        console.log(`HTTP server running on http://0.0.0.0:${this.port}`)
         resolve()
       })
 
@@ -100,26 +158,40 @@ class HttpServer {
         return
       }
 
-      // Close WebSocket server first
-      if (this.wss) {
-        this.wss.close(() => {
-          console.log('WebSocket server closed')
-        })
-      }
+      // Close WebSocket server first and wait for completion
+      const closeWebSocket = new Promise<void>((wsResolve) => {
+        if (this.wss) {
+          this.wss.close(() => {
+            console.log('[HTTPServer] WebSocket server closed')
+            wsResolve()
+          })
+        } else {
+          wsResolve()
+        }
+      })
 
-      // Close HTTP server
-      this.server.close((err) => {
-        if (err) {
-          reject(err)
+      // After WebSocket closes, close HTTP server
+      closeWebSocket.then(() => {
+        if (!this.server) {
+          resolve()
           return
         }
 
-        this.isRunning = false
-        this.server = null
-        this.wss = null
-        console.log('HTTP server stopped')
-        resolve()
-      })
+        this.server.close((err) => {
+          if (err) {
+            reject(err)
+            return
+          }
+
+          this.isRunning = false
+          this.server = null
+          this.wss = null
+          this.connectionCount = 0
+          this.subscriptions.clear()
+          console.log('[HTTPServer] HTTP server stopped')
+          resolve()
+        })
+      }).catch(reject)
     })
   }
 
@@ -135,32 +207,49 @@ class HttpServer {
       }
     } catch (error) {
       // If parsing fails, broadcast to all (old format)
-      console.error('Error parsing broadcast message:', error)
+      console.error('[HTTPServer] Error parsing broadcast message:', error)
     }
 
     let sentCount = 0
+    const deadConnections: WebSocket[] = []
+
     this.wss.clients.forEach((client) => {
       if (client.readyState === 1) { // WebSocket.OPEN
         const subscribedLang = this.subscriptions.get(client)
+        let shouldSend = false
 
-        // If client has no subscription (null), send everything (backward compatibility)
+        // Determine if we should send to this client
         if (subscribedLang === null || subscribedLang === undefined) {
-          client.send(message)
-          sentCount++
+          // No subscription - send everything (backward compatibility)
+          shouldSend = true
+        } else if (messageData && messageData.targetLang) {
+          // Message has target language - only send to matching subscribers
+          shouldSend = messageData.targetLang === subscribedLang
+        } else {
+          // Message has no targetLang - it's an "all" broadcast
+          shouldSend = true
         }
-        // If message has targetLang, only send to clients subscribed to that language
-        else if (messageData && messageData.targetLang) {
-          if (messageData.targetLang === subscribedLang) {
-            console.log(`[HTTPServer] Sending message to client subscribed to ${subscribedLang}`)
+
+        if (shouldSend) {
+          try {
             client.send(message)
             sentCount++
+          } catch (error) {
+            console.error('[HTTPServer] Error sending to client:', error)
+            // Mark for cleanup
+            deadConnections.push(client)
           }
         }
-        // If message has no targetLang, it's the "all" broadcast
-        else {
-          client.send(message)
-          sentCount++
-        }
+      }
+    })
+
+    // Clean up dead connections
+    deadConnections.forEach((client) => {
+      this.subscriptions.delete(client)
+      try {
+        client.terminate()
+      } catch (e) {
+        // Ignore termination errors
       }
     })
 

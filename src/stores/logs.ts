@@ -13,6 +13,7 @@ export interface Log {
 }
 
 export const useLogsStore = defineStore('logs', () => {
+  const MAX_LOGS = 100
   const logs = ref<Log[]>([])
   const loading_result = ref(false)
   const wait_interval = ref<undefined | ReturnType<typeof setTimeout>>(undefined)
@@ -20,13 +21,10 @@ export const useLogsStore = defineStore('logs', () => {
   // Generate unique window ID to prevent self-updates
   const windowId = Math.random().toString(36).substring(7)
   let isUpdatingFromStorage = false
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-  // Sync logs to localStorage for cross-window communication
-  watch(logs, (newLogs) => {
-    // Don't sync if we're currently updating from storage
-    if (isUpdatingFromStorage)
-      return
-
+  // Debounced localStorage sync function
+  const syncToLocalStorage = (newLogs: Log[]) => {
     try {
       const serialized = JSON.stringify({
         windowId,
@@ -40,6 +38,24 @@ export const useLogsStore = defineStore('logs', () => {
     catch (e) {
       console.error('Failed to sync logs:', e)
     }
+  }
+
+  // Sync logs to localStorage with debouncing to reduce UI jank
+  watch(logs, (newLogs) => {
+    // Don't sync if we're currently updating from storage
+    if (isUpdatingFromStorage)
+      return
+
+    // Clear existing timer
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+    }
+
+    // Debounce writes by 500ms to avoid syncing on every interim update
+    debounceTimer = setTimeout(() => {
+      syncToLocalStorage(newLogs)
+      debounceTimer = null
+    }, 500)
   }, { deep: true })
 
   // Listen for logs from other windows (not same window)
@@ -103,10 +119,20 @@ export const useLogsStore = defineStore('logs', () => {
     a.click()
   }
 
+  // Apply rolling window to prevent memory bloat during long sessions
+  function trimLogs() {
+    if (logs.value.length > MAX_LOGS) {
+      const itemsToRemove = logs.value.length - MAX_LOGS
+      logs.value.splice(0, itemsToRemove)
+      console.log('[Logs] Trimmed logs array, removed', itemsToRemove, 'old entries. Current length:', logs.value.length)
+    }
+  }
+
   return {
     logs,
     loading_result,
     wait_interval,
     exportLogs,
+    trimLogs,
   }
 })
