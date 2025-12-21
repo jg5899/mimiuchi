@@ -182,11 +182,11 @@ class Deepgram {
       smart_format: 'true',
       interim_results: 'true',
       punctuate: 'true',
-      endpointing: '300', // 300ms silence before finalizing
+      endpointing: '200', // 200ms silence before finalizing - faster phrase completion
       encoding: 'linear16',
       sample_rate: '16000',
       // Accuracy improvements
-      filler_words: 'false', // Remove "um", "uh", etc.
+      filler_words: 'false', // Remove "um", "uh" for cleaner church display
       numerals: 'true', // Better number formatting (e.g., "John 3:16")
       profanity_filter: 'false', // We handle this ourselves with church context
     })
@@ -306,6 +306,12 @@ class Deepgram {
   stop() {
     this.listening = false
     this.isReconnecting = false
+
+    // Clear any pending restart interval
+    if (this.try_restart_interval) {
+      clearTimeout(this.try_restart_interval)
+      this.try_restart_interval = null
+    }
 
     this.cleanupAudioStream()
     this.cleanupWebSocket()

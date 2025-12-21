@@ -31,10 +31,16 @@
     </v-row>
 
     <div>
+      <!-- Current interim result - FIRST in DOM so it appears at BOTTOM with column-reverse -->
+      <div v-if="logsStore.currentInterim" class="interim-text">
+        <span>{{ logsStore.currentInterim }}&nbsp;&nbsp;</span>
+      </div>
+
+      <!-- Finalized logs - stable, won't cause jumpiness -->
       <div
         v-for="(log, index) in logsStore.logs"
-        :key="index"
-        :class="{ 'fade-out': log.hide, 'final-text': isTextFinal(log), 'interim-text': !isTextFinal(log) }"
+        :key="'log-' + index"
+        :class="{ 'fade-out': log.hide, 'final-text': isTextFinal(log) }"
       >
         <a v-if="log.hide !== 2">
           <!-- When translation is enabled, check display mode -->
@@ -193,6 +199,21 @@ html {
 
 .interim-text {
   color: v-bind(interim_color);
+  transition: opacity 0.15s ease-in-out;
+}
+
+/* Smooth transitions for text changes */
+.final-text, .interim-text {
+  animation: textAppear 0.2s ease-out;
+}
+
+@keyframes textAppear {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .slide-fade-enter-active {

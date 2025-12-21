@@ -224,7 +224,20 @@ export const useSpeechStore = defineStore('speech', () => {
     }
 
     defaultStore.speech.value.onresult = (transcript: string, isFinal: boolean) => {
-      const { logs } = useLogsStore()
+      const logsStore = useLogsStore()
+
+      if (!isFinal) {
+        // Interim result: update via debounced setter (prevents rapid flickering)
+        logsStore.setInterim(transcript)
+        return
+      }
+
+      // Final result: only process if there's actual text
+      // Don't clear interim for empty finals (silence) - keep showing last text
+      if (!transcript || !transcript.trim()) {
+        return
+      }
+
       const log = {
         transcript,
         isFinal,
@@ -232,7 +245,10 @@ export const useSpeechStore = defineStore('speech', () => {
         translate: false,
         hide: 0, // 1 = fade, 2 = hide
       }
-      on_submit(log, logs.length - 1)
+
+      // Add to logs FIRST, then clear interim (prevents flash where text disappears)
+      on_submit(log, logsStore.logs.length)
+      logsStore.clearInterim()
     }
 
     defaultStore.speech.value.onstart = () => {
@@ -382,14 +398,17 @@ export const useSpeechStore = defineStore('speech', () => {
     if (loglist)
       loglist.scrollTop = loglist.scrollHeight
 
-    let i = logsStore.logs.length - 1 // track current index
-    if (i >= 0 && (!logsStore.logs[i].isFinal || log.translation)) {
+    // Determine if we're updating existing entry or adding new
+    let i: number
+    if (index < logsStore.logs.length && logsStore.logs[index]) {
+      // Update existing entry (e.g., from footer text edit)
       logsStore.logs[index] = log
-      // push to log
+      i = index
     }
     else {
+      // Add new entry (final speech result or new text submission)
       logsStore.logs.push(log)
-      i++
+      i = logsStore.logs.length - 1
     }
 
     // Apply rolling window to prevent memory bloat during long sessions
@@ -485,20 +504,24 @@ export const useSpeechStore = defineStore('speech', () => {
             return
 
           let pauses = 0
+          let currentIndex = i
           // fade out all text since last pause
-          while (i >= 0 && pauses < 2) {
+          while (currentIndex >= 0 && pauses < 2) {
             // Bounds check - log may have been trimmed
-            if (!logsStore.logs[i]) break
-            logsStore.logs[i].hide = 1
-            setTimeout((idx) => {
-              // Bounds check in async callback
-              if (logsStore.logs[idx]) {
-                logsStore.logs[idx].hide = 2
-              }
-            }, text.fade_time * 1000, i)
-            if (logsStore.logs[i].pause)
+            const currentLog = logsStore.logs[currentIndex]
+            if (!currentLog) break
+
+            currentLog.hide = 1
+            // Capture reference to the log object instead of using index
+            // This prevents race condition if array is trimmed before nested timeout fires
+            const logRef = currentLog
+            setTimeout(() => {
+              logRef.hide = 2
+            }, text.fade_time * 1000)
+
+            if (currentLog.pause)
               pauses += 1
-            i -= 1
+            currentIndex -= 1
           }
         }, text.hide_after * 1000)
       }
@@ -515,8 +538,11 @@ export const useSpeechStore = defineStore('speech', () => {
         if (openConnection) openConnection.send(fullMessage)
       }
 
-      // Note: Multi-language broadcasts to HTTP server display clients are now handled
-      // in translation_queue.ts when translations complete (not here, to avoid timing issues)
+      // Broadcast English transcripts to HTTP server display clients (for mobile /english stream)
+      // Note: Translation broadcasts are handled in translation_queue.ts when translations complete
+      if (is_electron() && log.isFinal && !log.translation) {
+        window.ipcRenderer.send('httpserver-broadcast', fullMessage)
+      }
 
       // Post to user webhooks
       post_to_user_webhooks(log.transcript, true)

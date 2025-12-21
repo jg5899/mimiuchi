@@ -16,6 +16,7 @@ import SpeakerProfiles from '@/pages/settings/SpeakerProfiles.vue'
 import MultiLanguage from '@/pages/settings/MultiLanguage.vue'
 import Connections from '@/components/settings/connections/Connections.vue'
 import LanguageStream from '@/pages/LanguageStream.vue'
+import EnglishStream from '@/pages/EnglishStream.vue'
 
 const routes = [
   {
@@ -31,6 +32,11 @@ const routes = [
     path: '/:lang(spanish|ukrainian|russian|portuguese|french|korean|mandarin|tagalog|vietnamese|arabic|hindi|polish|romanian)',
     name: 'language-stream',
     component: LanguageStream,
+  },
+  {
+    path: '/english',
+    name: 'english-stream',
+    component: EnglishStream,
   },
   {
     path: '/settings/',

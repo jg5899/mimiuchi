@@ -18,6 +18,30 @@ export const useLogsStore = defineStore('logs', () => {
   const loading_result = ref(false)
   const wait_interval = ref<undefined | ReturnType<typeof setTimeout>>(undefined)
 
+  // Separate tracking for current interim result to prevent jumpy updates
+  // Interim text updates this ref; when finalized, it moves to logs array
+  const currentInterim = ref<string>('')
+
+  // Debounce interim updates to prevent rapid flickering (updates at most every 50ms)
+  let interimDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  let pendingInterim: string = ''
+
+  function setInterim(text: string) {
+    pendingInterim = text
+
+    // If no timer, update immediately and start debounce period
+    if (!interimDebounceTimer) {
+      currentInterim.value = text
+      interimDebounceTimer = setTimeout(() => {
+        // Apply any pending update after debounce period
+        if (pendingInterim !== currentInterim.value) {
+          currentInterim.value = pendingInterim
+        }
+        interimDebounceTimer = null
+      }, 50) // Reduced from 100ms to 50ms to capture more updates
+    }
+  }
+
   // Generate unique window ID to prevent self-updates
   const windowId = Math.random().toString(36).substring(7)
   let isUpdatingFromStorage = false
@@ -128,11 +152,43 @@ export const useLogsStore = defineStore('logs', () => {
     }
   }
 
+  // Clear current interim (called when result is finalized)
+  function clearInterim() {
+    currentInterim.value = ''
+  }
+
+  // Cleanup function to clear timers when store is destroyed
+  function cleanup() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+    if (interimDebounceTimer) {
+      clearTimeout(interimDebounceTimer)
+      interimDebounceTimer = null
+    }
+  }
+
+  // Save logs immediately before page unloads to prevent data loss
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer)
+        debounceTimer = null
+      }
+      syncToLocalStorage(logs.value)
+    })
+  }
+
   return {
     logs,
     loading_result,
     wait_interval,
+    currentInterim,
+    setInterim,
     exportLogs,
     trimLogs,
+    clearInterim,
+    cleanup,
   }
 })
