@@ -3,7 +3,7 @@
 ## Minor Issues (Low Priority)
 
 ### 1. ScriptProcessorNode Deprecation
-**File:** `src/modules/speech/Deepgram.ts:280`
+**File:** `src/modules/speech/Deepgram.ts:287`
 **Issue:** `createScriptProcessorNode` is deprecated in favor of `AudioWorklet`. While it still works, browser vendors may remove support in the future.
 **Fix:** Migrate to AudioWorklet API (larger refactor needed)
 ```typescript
@@ -12,60 +12,33 @@ await this.audioContext.audioWorklet.addModule('audio-processor.js')
 const workletNode = new AudioWorkletNode(this.audioContext, 'audio-processor')
 ```
 
-### 2. Magic Numbers in Deepgram.ts
-**File:** `src/modules/speech/Deepgram.ts`
-**Lines:** 185, 256, 280
-**Issue:** Hard-coded values like `300` (endpointing), `4096` (buffer size), and reconnection delays.
-**Fix:** Extract to constants:
-```typescript
-private readonly ENDPOINTING_MS = 300
-private readonly BUFFER_SIZE = 4096
-private readonly MIN_BACKOFF_MS = 1000
-private readonly MAX_BACKOFF_MS = 16000
-```
-
-### 3. Excessive Logging in translation_queue.ts
-**File:** `src/helpers/translation_queue.ts`
-**Issue:** Every translation result, broadcast, and queue operation logs to console. In high-volume scenarios, this creates log spam.
-**Fix:** Add debug flag:
-```typescript
-private readonly DEBUG = false  // or from environment
-if (this.DEBUG) console.log('[TranslationQueue] ...')
-```
-
-### 4. Loose Types in Home.vue
-**File:** `src/pages/Home.vue:111-129`
-**Issue:** The `isTextFinal` function uses `any` type for the `log` parameter.
-**Fix:**
-```typescript
-import type { Log } from '@/stores/logs'
-function isTextFinal(log: Log): boolean {
-  // ... implementation
-}
-```
-
-### 5. Unused Variables in Deepgram.ts
-**File:** `src/modules/speech/Deepgram.ts:76-79`
-**Issue:** Properties `recorded`, `talking`, `mediaRecorder` are declared but never used.
-**Fix:** Remove unused properties or document why they exist.
-
-### 6. Translation Queue Timeout
-**File:** `src/helpers/translation_queue.ts:108-136`
-**Issue:** If Electron crashes or worker thread hangs, `activeTasks` will never decrement, blocking the queue permanently.
-**Fix:** Add timeout to recover from stuck translations:
-```typescript
-const timeoutId = setTimeout(() => {
-  console.error(`[TranslationQueue] Translation timeout for ${tgtLang}`)
-  this.activeTasks--
-  this.processQueue()
-}, 30000) // 30 second timeout
-```
+### 2. ESLint Configuration
+**File:** `eslint.config.js`
+**Issue:** ESLint is not properly configured for TypeScript/Vue and produces parsing errors.
+**Fix:** Upgrade Node.js to 20.10.0+ or reconfigure ESLint with proper TypeScript support.
 
 ---
 
-## Completed Fixes (for reference)
-- Debounce timers cleared in logs.ts
-- Fadeout array access race condition in speech.ts
-- Restart interval cleared in Deepgram.ts stop()
-- WebSocket cleanup in EnglishStream.vue
-- beforeunload sync added to logs.ts
+## Known Behaviors
+
+### Translation Display Mode
+The Home page has three display modes for translations (Settings > Translation):
+- **Original Only**: Shows only English transcripts
+- **Translation Only**: Shows translations (or original if translation not yet available)
+- **Both**: Shows both original and translation stacked vertically
+
+If you see both English and translated text, check the display mode toggle at the top of the Home page.
+
+---
+
+## Completed Fixes (December 2024)
+- ✅ Magic numbers extracted to `DEEPGRAM_CONFIG` constants in Deepgram.ts
+- ✅ Unused variables (`recorded`, `talking`, `mediaRecorder`) removed from Deepgram.ts
+- ✅ Debug logging flag added to translation_queue.ts (`QUEUE_CONFIG.DEBUG`)
+- ✅ Translation queue timeout (30s) added to recover from stuck translations
+- ✅ Loose types fixed in Home.vue (`isTextFinal` now uses `Log` type)
+- ✅ Debounce timers cleared in logs.ts
+- ✅ Fadeout array access race condition fixed in speech.ts
+- ✅ Restart interval cleared in Deepgram.ts stop()
+- ✅ WebSocket cleanup in EnglishStream.vue
+- ✅ beforeunload sync added to logs.ts

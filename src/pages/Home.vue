@@ -94,7 +94,7 @@ import WelcomeOverlay from '@/components/overlays/WelcomeOverlay.vue'
 
 import { useSettingsStore } from '@/stores/settings'
 import { useAppearanceStore } from '@/stores/appearance'
-import { useLogsStore } from '@/stores/logs'
+import { useLogsStore, type Log } from '@/stores/logs'
 import { useTranslationStore } from '@/stores/translation'
 
 declare const window: any
@@ -108,7 +108,7 @@ const logsStore = useLogsStore()
 const translationStore = useTranslationStore()
 
 // Helper function to determine if displayed text is final based on display mode
-function isTextFinal(log: any): boolean {
+function isTextFinal(log: Log): boolean {
   if (!translationStore.enabled) {
     return log.isFinal
   }

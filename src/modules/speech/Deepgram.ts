@@ -1,5 +1,15 @@
 declare const window: any
 
+// Configuration constants
+const DEEPGRAM_CONFIG = {
+  ENDPOINTING_MS: 200,        // Silence duration before finalizing phrase
+  BUFFER_SIZE: 4096,          // Audio buffer size for ScriptProcessorNode
+  SAMPLE_RATE: 16000,         // Audio sample rate in Hz
+  MIN_BACKOFF_MS: 1000,       // Minimum reconnection delay
+  MAX_BACKOFF_MS: 16000,      // Maximum reconnection delay
+  MAX_RECONNECT_ATTEMPTS: 5,  // Maximum WebSocket reconnection attempts
+} as const
+
 // Biblical vocabulary for improved STT accuracy in church contexts
 const BIBLICAL_VOCABULARY = [
   // Names of God & Jesus
@@ -73,12 +83,7 @@ const BIBLICAL_VOCABULARY = [
 ]
 
 class Deepgram {
-  recorded: Blob | null = null
-
   stream_ref: MediaStream | null = null
-  mediaRecorder: MediaRecorder | null = null
-
-  talking: boolean = false
   listening: boolean = false
   isRecording: boolean = false
   apiKey: string = ''
@@ -96,7 +101,6 @@ class Deepgram {
   // Reconnection management
   isReconnecting: boolean = false
   reconnectAttempts: number = 0
-  maxReconnectAttempts: number = 5
 
   onresult: Function = () => {}
   onend: Function = () => {}
@@ -182,9 +186,9 @@ class Deepgram {
       smart_format: 'true',
       interim_results: 'true',
       punctuate: 'true',
-      endpointing: '200', // 200ms silence before finalizing - faster phrase completion
+      endpointing: String(DEEPGRAM_CONFIG.ENDPOINTING_MS),
       encoding: 'linear16',
-      sample_rate: '16000',
+      sample_rate: String(DEEPGRAM_CONFIG.SAMPLE_RATE),
       // Accuracy improvements
       filler_words: 'false', // Remove "um", "uh" for cleaner church display
       numerals: 'true', // Better number formatting (e.g., "John 3:16")
@@ -241,7 +245,7 @@ class Deepgram {
 
       if (this.listening && !this.isReconnecting) {
         // Check if we've exceeded max reconnection attempts
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        if (this.reconnectAttempts >= DEEPGRAM_CONFIG.MAX_RECONNECT_ATTEMPTS) {
           console.error('Max reconnection attempts reached')
           this.onerror({ error: 'max-reconnect', message: 'Maximum reconnection attempts exceeded' })
           this.listening = false
@@ -252,10 +256,13 @@ class Deepgram {
         this.isReconnecting = true
         this.reconnectAttempts++
 
-        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-        const backoffDelay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 16000)
+        // Exponential backoff with configurable limits
+        const backoffDelay = Math.min(
+          DEEPGRAM_CONFIG.MIN_BACKOFF_MS * Math.pow(2, this.reconnectAttempts - 1),
+          DEEPGRAM_CONFIG.MAX_BACKOFF_MS
+        )
 
-        console.log(`Reconnecting in ${backoffDelay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+        console.log(`Reconnecting in ${backoffDelay}ms (attempt ${this.reconnectAttempts}/${DEEPGRAM_CONFIG.MAX_RECONNECT_ATTEMPTS})`)
 
         setTimeout(() => {
           if (this.listening) {
@@ -275,9 +282,10 @@ class Deepgram {
     // Always cleanup existing audio stream before creating a new one to prevent duplicates
     this.cleanupAudioStream()
 
-    this.audioContext = new AudioContext({ sampleRate: 16000 })
+    this.audioContext = new AudioContext({ sampleRate: DEEPGRAM_CONFIG.SAMPLE_RATE })
     const source = this.audioContext.createMediaStreamSource(this.stream_ref)
-    this.processor = this.audioContext.createScriptProcessor(4096, 1, 1)
+    // Note: ScriptProcessorNode is deprecated but still works. TODO: Migrate to AudioWorklet
+    this.processor = this.audioContext.createScriptProcessor(DEEPGRAM_CONFIG.BUFFER_SIZE, 1, 1)
 
     source.connect(this.processor)
     this.processor.connect(this.audioContext.destination)
