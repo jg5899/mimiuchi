@@ -7,7 +7,7 @@
   >
     <v-row class="align-center justify-center">
       <v-col :cols="12">
-        <p v-html="defaultStore.snackbar.desc" />
+        <p>{{ defaultStore.snackbar.desc }}</p>
       </v-col>
     </v-row>
     <template #actions>
@@ -109,6 +109,7 @@
               base-variant="outlined"
               icon-size="20"
               v-ripple
+              aria-label="Toggle microphone"
               @click="toggleListen"
             />
             <v-badge
@@ -126,6 +127,7 @@
                 base-variant="outlined"
                 icon-size="20"
                 v-ripple
+                aria-label="Toggle broadcast"
                 @click="connectionsStore.toggle_broadcast()"
               />
             </v-badge>
@@ -139,6 +141,7 @@
               base-variant="text"
               icon-size="20"
               v-ripple
+              aria-label="Toggle settings"
               @click="router.push({ path: (route.name === 'home') ? last_setting : '/' })"
             />
           </div>

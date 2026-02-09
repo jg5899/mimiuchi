@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data:;" />
     <title>Mimiuchi Display</title>
     <style>
         * {
@@ -102,8 +103,28 @@
             color: #333333;
         }
 
-        .theme-toggle:hover {
+        .theme-toggle:hover, .font-btn:hover {
             opacity: 0.8;
+        }
+
+        .font-btn {
+            padding: 0.3rem 0.7rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        body.light .font-btn {
+            background-color: #e0e0e0;
+            color: #333333;
+        }
+
+        body.dark .font-btn {
+            background-color: #444444;
+            color: #e0e0e0;
         }
 
         .container {
@@ -207,7 +228,9 @@
                 <div class="status-indicator" id="statusIndicator"></div>
                 <span id="statusText">Connecting...</span>
             </div>
-            <button class="theme-toggle" id="themeToggle">Toggle Theme</button>
+            <button class="font-btn" id="fontDecrease" aria-label="Decrease font size">A-</button>
+            <button class="font-btn" id="fontIncrease" aria-label="Increase font size">A+</button>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark theme">Toggle Theme</button>
         </div>
     </div>
 
@@ -222,7 +245,9 @@
 
     <script>
         // Language mapping from friendly names to language codes
+        // Supports both full names (spanish) and short codes (es)
         const languageMap = {
+            // Full names
             'spanish': 'spa_Latn',
             'ukrainian': 'ukr_Cyrl',
             'russian': 'rus_Cyrl',
@@ -235,7 +260,21 @@
             'arabic': 'arb_Arab',
             'hindi': 'hin_Deva',
             'polish': 'pol_Latn',
-            'romanian': 'ron_Latn'
+            'romanian': 'ron_Latn',
+            // Short codes (ISO 639-1)
+            'es': 'spa_Latn',
+            'uk': 'ukr_Cyrl',
+            'ru': 'rus_Cyrl',
+            'pt': 'por_Latn',
+            'fr': 'fra_Latn',
+            'ko': 'kor_Hang',
+            'zh': 'zho_Hans',
+            'tl': 'tgl_Latn',
+            'vi': 'vie_Latn',
+            'ar': 'arb_Arab',
+            'hi': 'hin_Deva',
+            'pl': 'pol_Latn',
+            'ro': 'ron_Latn'
         };
 
         // Language display names
@@ -260,9 +299,12 @@
         const port = urlParams.get('port') || window.location.port || '8080';
         const langParam = urlParams.get('lang');
         const targetLang = langParam ? languageMap[langParam.toLowerCase()] : null;
-        // Use window.location.hostname to connect to the same host that served this page
-        // This ensures it works both locally (localhost) and remotely (192.168.x.x)
-        const wsUrl = `ws://${window.location.hostname}:${port}`;
+        // Use window.location to connect to the same host that served this page
+        // Detect HTTPS (e.g., Cloudflare tunnel) and use wss:// accordingly
+        const isSecure = window.location.protocol === 'https:';
+        const wsProtocol = isSecure ? 'wss:' : 'ws:';
+        const wsPort = isSecure ? '' : `:${port}`;
+        const wsUrl = `${wsProtocol}//${window.location.hostname}${wsPort}`;
 
         let ws = null;
         let reconnectInterval = null;
@@ -370,6 +412,13 @@
                     languageName: data.data?.languageName,
                     isFinal: data.data?.isFinal
                 });
+
+                // If no language filter is set (STT only mode), only show original transcripts
+                if (!targetLang && data.data?.targetLang) {
+                    console.log('[Display] STT mode: skipping translation message for', data.data.targetLang);
+                    return;
+                }
+
                 updateTranscription(data.data);
             }
         }
@@ -515,6 +564,26 @@
                 });
             }
         }
+
+        // Font size controls
+        const MIN_FONT = 0.8;
+        const MAX_FONT = 3.0;
+        const FONT_STEP = 0.2;
+        let currentFontSize = parseFloat(localStorage.getItem('displayFontSize') || '1.5');
+        const transcriptionList = document.getElementById('transcriptionList');
+        transcriptionList.style.fontSize = currentFontSize + 'rem';
+
+        document.getElementById('fontDecrease').addEventListener('click', () => {
+            currentFontSize = Math.max(MIN_FONT, currentFontSize - FONT_STEP);
+            transcriptionList.style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('displayFontSize', String(currentFontSize));
+        });
+
+        document.getElementById('fontIncrease').addEventListener('click', () => {
+            currentFontSize = Math.min(MAX_FONT, currentFontSize + FONT_STEP);
+            transcriptionList.style.fontSize = currentFontSize + 'rem';
+            localStorage.setItem('displayFontSize', String(currentFontSize));
+        });
 
         // Initialize connection
         connect();

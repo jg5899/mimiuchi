@@ -28,6 +28,7 @@
               icon
               size="small"
               variant="text"
+              aria-label="Show QR code"
               @click="showQRCode(url)"
             >
               <v-icon size="small">mdi-qrcode</v-icon>
@@ -36,6 +37,7 @@
               icon
               size="small"
               variant="text"
+              aria-label="Copy URL"
               @click="copyToClipboard(url)"
             >
               <v-icon size="small">
@@ -77,6 +79,42 @@
               >
                 <v-icon size="small">
                   {{ copiedUrl === url ? 'mdi-check' : 'mdi-content-copy' }}
+                </v-icon>
+              </v-btn>
+            </template>
+          </v-list-item>
+        </template>
+
+        <!-- Cloudflare Tunnel URL (Public Access) -->
+        <template v-if="tunnelUrl">
+          <v-divider class="my-2" />
+          <v-list-subheader class="px-0">
+            <v-icon size="small" class="mr-1">mdi-cloud-upload</v-icon>
+            Public URL (Cloudflare Tunnel)
+          </v-list-subheader>
+          <v-list-item class="px-0">
+            <v-list-item-title class="text-body-2 font-mono">
+              {{ tunnelUrl }}
+            </v-list-item-title>
+            <template #append>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                aria-label="Show QR code"
+                @click="showQRCode(tunnelUrl)"
+              >
+                <v-icon size="small">mdi-qrcode</v-icon>
+              </v-btn>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                aria-label="Copy URL"
+                @click="copyToClipboard(tunnelUrl)"
+              >
+                <v-icon size="small">
+                  {{ copiedUrl === tunnelUrl ? 'mdi-check' : 'mdi-content-copy' }}
                 </v-icon>
               </v-btn>
             </template>
@@ -219,6 +257,7 @@ const networkInterfaces = ref<NetworkInterface[]>([])
 const websocketUrls = ref<string[]>([])
 const httpUrls = ref<string[]>([])
 const languageUrls = ref<LanguageUrlGroup[]>([])
+const tunnelUrl = ref<string | null>(null)
 const copiedUrl = ref<string | null>(null)
 const qrDialog = ref(false)
 const qrCodeUrl = ref('')
@@ -304,10 +343,27 @@ async function showQRCode(url: string) {
   }
 }
 
+// Load tunnel status
+async function loadTunnelStatus() {
+  if (!is_electron()) return
+
+  try {
+    const status = await (window as any).ipcRenderer.invoke('cloudflare-tunnel-status')
+    if (status.running) {
+      tunnelUrl.value = status.tunnelUrl
+    } else {
+      tunnelUrl.value = null
+    }
+  } catch (error) {
+    console.error('Failed to get tunnel status:', error)
+  }
+}
+
 // Load network info when component mounts
 onMounted(() => {
   if (showConnectionInfo.value) {
     loadNetworkInfo()
+    loadTunnelStatus()
   }
 })
 
@@ -315,6 +371,7 @@ onMounted(() => {
 watch(() => defaultStore.broadcasting, (newValue) => {
   if (newValue) {
     loadNetworkInfo()
+    loadTunnelStatus()
   }
 })
 

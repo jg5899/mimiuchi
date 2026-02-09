@@ -2,7 +2,7 @@ declare const window: any
 
 // Configuration constants
 const DEEPGRAM_CONFIG = {
-  ENDPOINTING_MS: 200,        // Silence duration before finalizing phrase
+  ENDPOINTING_MS: 150,        // Fast phrase detection
   BUFFER_SIZE: 4096,          // Audio buffer size for ScriptProcessorNode
   SAMPLE_RATE: 16000,         // Audio sample rate in Hz
   MIN_BACKOFF_MS: 1000,       // Minimum reconnection delay
@@ -10,77 +10,8 @@ const DEEPGRAM_CONFIG = {
   MAX_RECONNECT_ATTEMPTS: 5,  // Maximum WebSocket reconnection attempts
 } as const
 
-// Biblical vocabulary for improved STT accuracy in church contexts
-const BIBLICAL_VOCABULARY = [
-  // Names of God & Jesus
-  'Jesus', 'Christ', 'Messiah', 'Lord', 'God', 'Yahweh', 'Jehovah', 'Almighty',
-  'Father', 'Son', 'Holy Spirit', 'Holy Ghost', 'Savior', 'Redeemer', 'Emmanuel',
-
-  // Bible Books - Old Testament
-  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges',
-  'Ruth', 'Samuel', 'Kings', 'Chronicles', 'Ezra', 'Nehemiah', 'Esther', 'Job',
-  'Psalms', 'Proverbs', 'Ecclesiastes', 'Solomon', 'Isaiah', 'Jeremiah',
-  'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos', 'Obadiah',
-  'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
-
-  // Bible Books - New Testament
-  'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', 'Corinthians', 'Galatians',
-  'Ephesians', 'Philippians', 'Colossians', 'Thessalonians', 'Timothy', 'Titus',
-  'Philemon', 'Hebrews', 'James', 'Peter', 'Jude', 'Revelation',
-
-  // Biblical People
-  'Abraham', 'Isaac', 'Jacob', 'Moses', 'David', 'Solomon', 'Elijah', 'Elisha',
-  'Isaiah', 'Jeremiah', 'Daniel', 'Paul', 'Peter', 'John', 'James', 'Mary',
-  'Joseph', 'Adam', 'Eve', 'Noah', 'Sarah', 'Rebecca', 'Rachel', 'Leah',
-  'Pharaoh', 'Pilate', 'Herod', 'Lazarus', 'Martha', 'Nicodemus', 'Barnabas',
-
-  // Biblical Places
-  'Jerusalem', 'Israel', 'Bethlehem', 'Nazareth', 'Galilee', 'Jordan', 'Egypt',
-  'Babylon', 'Canaan', 'Zion', 'Calvary', 'Golgotha', 'Gethsemane', 'Sinai',
-
-  // Theological Terms
-  'salvation', 'redemption', 'sanctification', 'justification', 'righteousness',
-  'atonement', 'grace', 'mercy', 'forgiveness', 'repentance', 'baptism',
-  'communion', 'resurrection', 'crucifixion', 'gospel', 'scripture', 'prophecy',
-  'covenant', 'testament', 'commandments', 'beatitudes', 'parable', 'miracle',
-  'faith', 'hope', 'love', 'sin', 'transgression', 'iniquity', 'confession',
-  'intercession', 'supplication', 'thanksgiving', 'worship', 'praise', 'prayer',
-  'tithe', 'offering', 'sacrifice', 'blessing', 'anointing', 'consecration',
-
-  // Church Terms
-  'congregation', 'fellowship', 'ministry', 'sermon', 'pastor', 'preacher',
-  'deacon', 'elder', 'apostle', 'disciple', 'believer', 'Christian',
-  'church', 'sanctuary', 'altar', 'pulpit', 'choir', 'hymn', 'psalm',
-
-  // Common Phrases
-  'Amen', 'Hallelujah', 'Hosanna', 'Alleluia', 'Maranatha', 'Selah',
-  'born again', 'eternal life', 'kingdom of God', 'kingdom of heaven',
-  'Holy Bible', 'Word of God', 'Good News', 'Great Commission',
-
-  // Trinity Community Church - Staff & Leadership
-  'Trinity Community Church', 'Trinity', 'TCC',
-  'Aaron Lipinski', 'Andrei Sava', 'Angelina Matchain', 'Bryan Frazier',
-  'Bryce Naylor', 'Chris Nickel', 'Chuck Shillito', 'Daniel Garcia',
-  'Dorothy Doswald', 'Emily Ladd', 'Emma Shapazian', 'Guillermo Matchain',
-  'Heather Jensen', 'Hillary Belmont', 'Jaimi Fong', 'James Bernabe',
-  'John Baker', 'Jordan Potter', 'Josh Garcia', 'Kevin Lockwood',
-  'Laura Barth', 'Lisa Richardson', 'Martine Cox', 'Matt Harder',
-  'Monica Gutierrez', 'Nathan Belknap', 'Nathanael Cervantes', 'Noah Potter',
-  'Rachel Golding', 'Sam Musgrave', 'Sean Cox', 'Shanna Frost',
-  // Trinity Elders
-  'Cameron Fong', 'John Blackburn', 'Keith De', 'Larry Parker',
-  'Randy Larson', 'Rick Wood', 'Scott Beckman',
-
-  // Trinity Ministries & Programs
-  'Adult Discipleship', 'Biblical Counseling', 'Fellowship Groups',
-  'High School Ministry', 'Junior High Ministry', 'Student Ministries',
-  'Young Adults', 'Newly Marrieds', 'Preschool Ministries', 'Sunday School',
-  'Prayer Ministries', 'Worship Ministries', 'Welcoming Ministries',
-  'Trinity Missions', 'Midweek Bible', 'Special Events', 'Pastoral Care',
-
-  // Local Places (Fresno area)
-  'Fresno', 'Clovis', 'Willow Ave', 'Fresno State', 'Fresno Pacific',
-]
+// No keywords - let Nova-2 work naturally for best speed/accuracy
+const BIBLICAL_VOCABULARY: string[] = []
 
 class Deepgram {
   stream_ref: MediaStream | null = null

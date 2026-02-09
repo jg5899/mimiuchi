@@ -99,9 +99,13 @@ export const useConnectionsStore = defineStore('connections', () => {
       }
 
       new_connection.onmessage = (event: any) => {
-        const msg = JSON.parse(event.data)
-        if (msg.event === 'connect' && msg.version !== __APP_VERSION__)
-          defaultStore.show_snackbar('error', i18n.t('snackbar.version_mismatch'))
+        try {
+          const msg = JSON.parse(event.data)
+          if (msg.event === 'connect' && msg.version !== __APP_VERSION__)
+            defaultStore.show_snackbar('error', i18n.t('snackbar.version_mismatch'))
+        } catch (e) {
+          console.error('Failed to parse WebSocket message:', e)
+        }
       }
 
       new_connection.onclose = (event) => {
@@ -115,7 +119,7 @@ export const useConnectionsStore = defineStore('connections', () => {
         else
           open.user_websockets[user_connection_id] = null
 
-        if (event.wasClean && [1000, 1001].includes(event.code))
+        if (defaultStore.connections_count > 0)
           defaultStore.connections_count -= 1
       }
 

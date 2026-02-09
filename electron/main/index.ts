@@ -8,6 +8,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import Store from 'electron-store'
 import { check_update } from './modules/check_update.js'
 import { HttpServer, HttpServerConfig } from './modules/httpserver.js'
+import { CloudflaredManager } from './modules/cloudflared.js'
 
 interface Schema {
   'win_bounds': object
@@ -68,6 +69,9 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 // HTTP server for display client
 let httpServer: HttpServer | null = null
+
+// Cloudflare tunnel manager
+let cloudflaredManager: CloudflaredManager | null = null
 
 const window_config: any = {
   title: 'Main window',
@@ -200,6 +204,11 @@ app.on('before-quit', () => {
   if (httpServer) {
     httpServer.stop().catch(err => console.error('Error stopping HTTP server:', err))
   }
+
+  // Stop Cloudflare tunnel if running
+  if (cloudflaredManager) {
+    cloudflaredManager.stop().catch(err => console.error('Error stopping Cloudflare tunnel:', err))
+  }
 })
 
 app.on('second-instance', () => {
@@ -225,8 +234,8 @@ ipcMain.handle('open-win', (_, arg) => {
   const childWindow = new BrowserWindow({
     webPreferences: {
       preload,
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   })
 
@@ -286,15 +295,6 @@ ipcMain.on('set-translation-api-key', async (event, apiKey) => {
   getTransformersWorker().postMessage({ type: 'set-api-key', apiKey })
 })
 
-ipcMain.on('set-deepl-api-key', async (event, apiKey) => {
-  console.log('[Main IPC] Received set-deepl-api-key, length:', apiKey?.length)
-  getTransformersWorker().postMessage({ type: 'set-deepl-api-key', apiKey })
-})
-
-ipcMain.on('set-translation-provider', async (event, provider) => {
-  console.log('[Main IPC] Received set-translation-provider:', provider)
-  getTransformersWorker().postMessage({ type: 'set-translation-provider', provider })
-})
 
 // HTTP Server handlers
 ipcMain.handle('httpserver-start', async (event, config: { port: number }) => {
@@ -379,7 +379,51 @@ ipcMain.handle('get-network-interfaces', async () => {
   return interfaces
 })
 
-// Open external URL in default browser
+// Open external URL in default browser (only allow http/https)
 ipcMain.on('open-external-url', (event, url: string) => {
-  shell.openExternal(url)
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      shell.openExternal(url)
+    } else {
+      console.warn('[Main] Blocked openExternal for non-http URL:', url)
+    }
+  } catch {
+    console.warn('[Main] Blocked openExternal for invalid URL:', url)
+  }
+})
+
+// Cloudflare Tunnel handlers
+ipcMain.handle('cloudflare-tunnel-start', async (event, config: { httpPort: number, token?: string, customHostname?: string }) => {
+  try {
+    if (!cloudflaredManager) {
+      cloudflaredManager = new CloudflaredManager()
+    }
+    console.log('[Main IPC] Starting tunnel with config:', {
+      httpPort: config.httpPort,
+      hasToken: !!config.token,
+      customHostname: config.customHostname
+    })
+    const result = await cloudflaredManager.start(config)
+    return result
+  } catch (error: any) {
+    console.error('Failed to start Cloudflare tunnel:', error)
+    return { running: false, tunnelUrl: null, error: error?.message || String(error) }
+  }
+})
+
+ipcMain.handle('cloudflare-tunnel-stop', async () => {
+  try {
+    if (cloudflaredManager) {
+      await cloudflaredManager.stop()
+    }
+    return { success: true }
+  } catch (error: any) {
+    console.error('Failed to stop Cloudflare tunnel:', error)
+    return { success: false, error: error?.message || String(error) }
+  }
+})
+
+ipcMain.handle('cloudflare-tunnel-status', async () => {
+  return cloudflaredManager?.getStatus() || { running: false, tunnelUrl: null, error: null }
 })

@@ -49,21 +49,6 @@
           />
         </v-col>
 
-        <v-col :cols="12">
-          <v-textarea
-            v-model="selectedProfile.whisperPrompt"
-            label="Whisper API Context Prompt"
-            variant="outlined"
-            rows="3"
-            hint="Custom context to help Whisper understand this speaker's vocabulary (only used when Whisper API is enabled)"
-            persistent-hint
-          />
-          <v-alert type="info" variant="tonal" class="mt-2">
-            <strong>Tip:</strong> Include proper nouns, technical terms, and context specific to this speaker.
-            For example, a pastor might reference biblical names and theological terms, while a worship leader might mention song titles and musical terminology.
-          </v-alert>
-        </v-col>
-
         <v-col :cols="12" :sm="6">
           <v-slider
             v-model="selectedProfile.confidence"
@@ -159,11 +144,11 @@
 import { computed, ref, watch } from 'vue'
 import { useSpeakerProfilesStore } from '@/stores/speaker_profiles'
 import { useSpeechStore } from '@/stores/speech'
-import { WebSpeechLangs } from '@/modules/speech'
+import sttLanguages from '@/constants/stt_languages'
 
 const speakerProfilesStore = useSpeakerProfilesStore()
 const speechStore = useSpeechStore()
-const languages = WebSpeechLangs
+const languages = sttLanguages
 
 const selectedProfileId = ref(speakerProfilesStore.activeProfileId)
 const newOriginal = ref('')
@@ -202,10 +187,8 @@ function onActiveProfileChange(newProfileId: string) {
   // Set the active profile in the store
   speakerProfilesStore.setActiveProfile(newProfileId)
 
-  // Re-initialize speech with the new profile's prompt if using Whisper API
-  if (speechStore.stt.type.value === 'whisper') {
-    speechStore.initialize_speech(speechStore.stt.language)
-  }
+  // Re-initialize speech with the new profile's settings
+  speechStore.initialize_speech(speechStore.stt.language)
 }
 
 watch(selectedProfile, (newProfile) => {

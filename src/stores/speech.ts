@@ -9,14 +9,12 @@ import { useConnectionsStore } from '@/stores/connections'
 import { useWordReplaceStore } from '@/stores/word_replace'
 import { useSpeakerProfilesStore } from '@/stores/speaker_profiles'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
-import fetch from '@/helpers/fetch'
 import { translationQueue } from '@/helpers/translation_queue'
 import is_electron from '@/helpers/is_electron'
 import { i18n } from '@/plugins/i18n'
-import { WebSpeech, Whisper, Deepgram } from '@/modules/speech'
-import yukumo from '@/constants/voices/yukumo'
-import tiktok from '@/constants/voices/tiktok'
+import { Deepgram } from '@/modules/speech'
 import webhook from '@/helpers/webhook'
+
 import { filterProfanity } from '@/helpers/profanity_filter'
 
 export interface ListItem {
@@ -33,14 +31,12 @@ declare const window: any
 export const useSpeechStore = defineStore('speech', () => {
   const stt_init = {
     type: {
-      title: 'Web Speech API (Free, built-in)',
-      value: 'webspeech',
+      title: 'Deepgram Nova-2 (Best for real-time church audio, recommended)',
+      value: 'deepgram',
     },
     language: 'en-US',
     confidence: 0.9,
     sensitivity: 0.0,
-    whisperApiKey: '',
-    whisperUseGPT4oPostProcessing: false,
     deepgramApiKey: '',
   }
 
@@ -48,7 +44,7 @@ export const useSpeechStore = defineStore('speech', () => {
 
   const tts_init = {
     enabled: false,
-    type: 'tiktok',
+    type: 'webspeech',
     voice: '',
     rate: 1,
     pitch: 1,
@@ -71,63 +67,35 @@ export const useSpeechStore = defineStore('speech', () => {
     console.log('initialize_speech called', {
       type: stt.value.type.value,
       language,
-      hasWhisperKey: !!stt.value.whisperApiKey,
       hasDeepgramKey: !!stt.value.deepgramApiKey,
     })
 
-    if (stt.value.type.value === 'whisper') {
-      // Get the active speaker profile's custom Whisper prompt
+    try {
+      // Get the active speaker profile's custom vocabulary for keyword boost
       const activeProfile = speakerProfilesStore.getActiveProfile()
-      const customPrompt = activeProfile?.whisperPrompt || ''
+      const customKeywords = activeProfile?.customVocabulary?.map(v => v.replacement) || []
 
-      defaultStore.speech.value = new Whisper(
+      console.log('About to create Deepgram instance with:', {
         language,
-        stt.value.whisperApiKey,
-        customPrompt,
-        stt.value.whisperUseGPT4oPostProcessing,
+        hasApiKey: !!stt.value.deepgramApiKey,
+        customKeywords,
+      })
+
+      defaultStore.speech.value = new Deepgram(
+        language,
+        stt.value.deepgramApiKey,
+        customKeywords,
       )
-      console.log('Created Whisper instance', {
+
+      console.log('Created Deepgram instance successfully', {
         hasRecognition: !!defaultStore.speech.value.recognition,
         hasApiKey: !!defaultStore.speech.value.apiKey,
         apiKeyLength: defaultStore.speech.value.apiKey?.length,
-        customPrompt: customPrompt.substring(0, 50) + '...',
-        useGPT4o: stt.value.whisperUseGPT4oPostProcessing,
+        customKeywords: customKeywords.length,
       })
     }
-    else if (stt.value.type.value === 'deepgram') {
-      try {
-        // Get the active speaker profile's custom vocabulary for keyword boost
-        const activeProfile = speakerProfilesStore.getActiveProfile()
-        const customKeywords = activeProfile?.customVocabulary?.map(v => v.replacement) || []
-
-        console.log('About to create Deepgram instance with:', {
-          language,
-          hasApiKey: !!stt.value.deepgramApiKey,
-          customKeywords,
-        })
-
-        defaultStore.speech.value = new Deepgram(
-          language,
-          stt.value.deepgramApiKey,
-          customKeywords,
-        )
-
-        console.log('Created Deepgram instance successfully', {
-          hasRecognition: !!defaultStore.speech.value.recognition,
-          hasApiKey: !!defaultStore.speech.value.apiKey,
-          apiKeyLength: defaultStore.speech.value.apiKey?.length,
-          customKeywords: customKeywords.length,
-        })
-      }
-      catch (error) {
-        console.error('Error creating Deepgram instance:', error)
-        // Fallback to WebSpeech on error
-        defaultStore.speech.value = new WebSpeech(language)
-      }
-    }
-    else {
-      defaultStore.speech.value = new WebSpeech(language)
-      console.log('Created WebSpeech instance')
+    catch (error) {
+      console.error('Error creating Deepgram instance:', error)
     }
   }
 
@@ -313,53 +281,8 @@ export const useSpeechStore = defineStore('speech', () => {
   }
 
   async function speak(input: string) {
-    let response: any
-    const defaultStore = useDefaultStore()
-    switch (tts.value.type) {
-      case 'tiktok':
-        const body = {
-          text: input,
-          voice: tiktok.voices.find(voice => voice.name === tts.value.voice)?.lang,
-        }
-        try {
-          response = await fetch.post(tiktok.api, body)
-        }
-        catch (e) {
-          console.error(e)
-          response = await fetch.post(tiktok.api, body)
-        }
-        if (!defaultStore.audio.src || defaultStore.audio.ended) {
-          defaultStore.audio.src = `data:audio/mpeg;base64,${response.data}`
-          defaultStore.audio.play()
-        }
-        else {
-          defaultStore.audio.onended = function () {
-            defaultStore.audio.src = `data:audio/mpeg;base64,${response.data}`
-            defaultStore.audio.play()
-            defaultStore.audio.onended = null
-          }
-        }
-        break
-
-      case 'webspeech':
-        const { speech } = useDefaultStore()
-        speech.speak(input)
-        break
-
-      case 'yukumo':
-        if (!defaultStore.audio.src || defaultStore.audio.ended) {
-          defaultStore.audio.src = yukumo.build_api(tts.value.voice, input)
-          defaultStore.audio.play()
-        }
-        else {
-          defaultStore.audio.onended = function () {
-            defaultStore.audio.src = yukumo.build_api(tts.value.voice, input)
-            defaultStore.audio.play()
-            defaultStore.audio.onended = null
-          }
-        }
-        break
-    }
+    const { speech } = useDefaultStore()
+    speech.speak(input)
   }
 
   async function on_submit(log: any, index: number) {
@@ -439,22 +362,10 @@ export const useSpeechStore = defineStore('speech', () => {
       // Multi-language translation - works independently of main translation toggle
       // ONLY translate final results to reduce API usage (skip interim results)
       if (is_electron() && multiTranslationStore.enabledStreams.length > 0 && !log.translate && log.isFinal) {
-        // Use translationStore.type as provider (it holds 'OpenAI' or 'DeepL')
-        const provider = translationStore.type
-        window.ipcRenderer.send('set-translation-provider', provider)
-
-        if (provider === 'DeepL') {
-          if (translationStore.deepl_api_key) {
-            window.ipcRenderer.send('set-deepl-api-key', translationStore.deepl_api_key)
-          } else {
-            console.warn('[Speech] No DeepL API key set! Translations will fail.')
-          }
-        } else if (provider === 'OpenAI') {
-          if (translationStore.openai_api_key) {
-            window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
-          } else {
-            console.warn('[Speech] No OpenAI API key set! Translations will fail.')
-          }
+        if (translationStore.openai_api_key) {
+          window.ipcRenderer.send('set-translation-api-key', translationStore.openai_api_key)
+        } else {
+          console.warn('[Speech] No OpenAI API key set! Translations will fail.')
         }
 
         // Queue translations for all enabled languages
@@ -549,32 +460,18 @@ export const useSpeechStore = defineStore('speech', () => {
     }
   }
 
-  // temp
   interface Voice {
     lang: string
     name: string
     local_service: boolean
   }
   function load_voices(option: string): Voice[] {
-    let voices: Voice[] = []
-    switch (option) {
-      case 'tiktok':
-        voices = tiktok.voices
-        break
-      case 'webspeech':
-        const synth = window.speechSynthesis
-        voices = synth.getVoices().map((lang: SpeechSynthesisVoice) => ({
-          lang: lang.lang,
-          name: lang.name,
-          local_service: lang.localService,
-        } as Voice))
-        break
-      case 'yukumo':
-        voices = yukumo.voices
-        break
-    }
-
-    return voices
+    const synth = window.speechSynthesis
+    return synth.getVoices().map((lang: SpeechSynthesisVoice) => ({
+      lang: lang.lang,
+      name: lang.name,
+      local_service: lang.localService,
+    } as Voice))
   }
 
   function pin_language(selected_language: ListItem) {

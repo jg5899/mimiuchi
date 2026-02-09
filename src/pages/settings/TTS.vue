@@ -133,16 +133,8 @@ const speechStore = useSpeechStore()
 
 const tts_options = ref([
   {
-    title: 'TikTok',
-    value: 'tiktok',
-  },
-  {
     title: 'Web Speech API',
     value: 'webspeech',
-  },
-  {
-    title: 'Yukumo!',
-    value: 'yukumo',
   },
 ])
 const selected_option = ref(speechStore.tts.type)

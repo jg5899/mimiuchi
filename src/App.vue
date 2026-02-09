@@ -21,6 +21,7 @@ import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
 import { useHttpServerStore } from '@/stores/httpserver'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
+import { useSpeakerProfilesStore } from '@/stores/speaker_profiles'
 import { global_langs } from '@/plugins/i18n'
 
 import is_electron from '@/helpers/is_electron'
@@ -41,6 +42,7 @@ const multiTranslationStore = useMultiTranslationStore()
 const settingsStore = useSettingsStore()
 const connectionsStore = useConnectionsStore()
 const httpServerStore = useHttpServerStore()
+const speakerProfilesStore = useSpeakerProfilesStore()
 
 const router = useRouter()
 
@@ -66,6 +68,12 @@ connectionsStore.$subscribe((_, state) => {
 httpServerStore.$subscribe((_, state) => {
   localStorage.setItem('httpserver', JSON.stringify(state))
 })
+speakerProfilesStore.$subscribe((_, state) => {
+  localStorage.setItem('speaker_profiles', JSON.stringify(state))
+})
+multiTranslationStore.$subscribe((_, state) => {
+  localStorage.setItem('multi_translation', JSON.stringify(state))
+})
 
 // CRITICAL: Load stores from localStorage FIRST, before using them
 appearanceStore.$patch(JSON.parse(localStorage.getItem('appearance') || '{}'))
@@ -75,6 +83,8 @@ wordReplaceStore.$patch(JSON.parse(localStorage.getItem('word_replace') || '{}')
 translationStore.$patch(JSON.parse(localStorage.getItem('translation') || '{}'))
 connectionsStore.$patch(JSON.parse(localStorage.getItem('connections') || '{}'))
 httpServerStore.$patch(JSON.parse(localStorage.getItem('httpserver') || '{}'))
+speakerProfilesStore.$patch(JSON.parse(localStorage.getItem('speaker_profiles') || '{}'))
+multiTranslationStore.$patch(JSON.parse(localStorage.getItem('multi_translation') || '{}'))
 
 // NOW initialize translation queue with stores (after they're loaded from localStorage)
 translationQueue.initialize(translationStore, multiTranslationStore)

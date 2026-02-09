@@ -226,8 +226,9 @@ class HttpServer {
           // Message has target language - only send to matching subscribers
           shouldSend = messageData.targetLang === subscribedLang
         } else {
-          // Message has no targetLang - it's an "all" broadcast
-          shouldSend = true
+          // Message has no targetLang (English transcript) - DON'T send to language-specific subscribers
+          // They only want their specific language translations, not English
+          shouldSend = false
         }
 
         if (shouldSend) {

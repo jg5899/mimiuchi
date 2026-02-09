@@ -3,13 +3,13 @@ export default {
   welcome: {
     intro: {
       title: 'Welcome to {name}!',
-      description: '{name} is a captioning tool that can display spoken or typed text onto a customizable window so that you can effortlessly display the results in applications like OBS. It also supports relaying text and commands to other applications (like VRChat).',
+      description: '{name} provides real-time sermon transcription and multi-language translation for your church services. Congregation members can view live captions on their phones via QR code or shared link.',
       button: 'next',
     },
     controls: {
       title: 'Controls',
-      broadcast: 'Toggle broadcasting (requires desktop app)',
-      mic: 'Toggle speech-to-text (requires browser permission)',
+      broadcast: 'Toggle broadcasting to display screens and phones',
+      mic: 'Toggle speech-to-text transcription',
       settings: 'Open settings panel',
       button: 'close',
     },
@@ -202,6 +202,19 @@ export default {
         title: 'HTTP Display Server',
         running: 'Server running on port {port}',
         stopped: 'Server stopped',
+      },
+      cloudflare: {
+        title: 'Cloudflare Tunnel',
+        starting: 'Starting tunnel...',
+        running: 'Tunnel active',
+        stopped: 'Tunnel inactive',
+        warning: 'Exposes your transcription server to the internet. Anyone with the URL can view transcriptions.',
+        copied: 'Tunnel URL copied to clipboard',
+        requires_http: 'Enable HTTP server first',
+        error: {
+          not_installed: 'cloudflared not found. Install from cloudflare.com/products/tunnel',
+          failed: 'Failed to start tunnel',
+        },
       },
       info: {
         title: 'Network Connection Info',

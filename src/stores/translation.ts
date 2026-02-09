@@ -6,14 +6,13 @@ import { useSpeechStore } from '@/stores/speech'
 
 export const useTranslationStore = defineStore('translation', () => {
   const enabled = ref(false)
-  const type = ref('OpenAI') // 'OpenAI' or 'DeepL'
+  const type = ref('OpenAI')
   const source = ref('eng_Latn')
-  const target = ref('jpn_Jpan')
+  const target = ref('spa_Latn')
   const download = ref(-1) // percent downloaded 0-100. -1 = done
   const show_original = ref(true)
-  const display_mode = ref<'original' | 'translation' | 'both'>('translation') // What to show in main window
+  const display_mode = ref<'original' | 'translation' | 'both'>('translation')
   const openai_api_key = ref('')
-  const deepl_api_key = ref('')
   const use_context = ref(false)
   const context_window_size = ref(3)
 
@@ -81,7 +80,6 @@ export const useTranslationStore = defineStore('translation', () => {
     show_original,
     display_mode,
     openai_api_key,
-    deepl_api_key,
     use_context,
     context_window_size,
     onMessageReceived,

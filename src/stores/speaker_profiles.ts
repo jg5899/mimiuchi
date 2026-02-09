@@ -8,7 +8,6 @@ export interface SpeakerProfile {
   confidence: number
   sensitivity: number
   customVocabulary: Array<{ original: string, replacement: string }>
-  whisperPrompt: string // Custom context prompt for Whisper API
   enabled: boolean
 }
 
@@ -21,7 +20,6 @@ export const useSpeakerProfilesStore = defineStore('speaker_profiles', () => {
       confidence: 0.9,
       sensitivity: 0.0,
       customVocabulary: [],
-      whisperPrompt: 'Church service with scripture readings, prayers, hymns, and sermon. Proper nouns include God, Jesus, Christ, Holy Spirit, Bible, Amen.',
       enabled: true,
     },
     {
@@ -31,7 +29,6 @@ export const useSpeakerProfilesStore = defineStore('speaker_profiles', () => {
       confidence: 0.9,
       sensitivity: 0.0,
       customVocabulary: [],
-      whisperPrompt: 'Church pastor preaching sermon with scripture references, theological terms, and biblical names.',
       enabled: false,
     },
     {
@@ -41,7 +38,6 @@ export const useSpeakerProfilesStore = defineStore('speaker_profiles', () => {
       confidence: 0.9,
       sensitivity: 0.0,
       customVocabulary: [],
-      whisperPrompt: 'Worship leader speaking about songs, hymns, and leading congregational singing.',
       enabled: false,
     },
   ])
@@ -91,7 +87,8 @@ export const useSpeakerProfilesStore = defineStore('speaker_profiles', () => {
 
     let result = text
     profile.customVocabulary.forEach((entry) => {
-      const regex = new RegExp(entry.original, 'gi')
+      const escaped = entry.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(escaped, 'gi')
       result = result.replace(regex, entry.replacement)
     })
     return result

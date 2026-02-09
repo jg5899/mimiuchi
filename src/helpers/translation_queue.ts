@@ -7,7 +7,7 @@ declare const window: any
 // Configuration constants
 const QUEUE_CONFIG = {
   MAX_HISTORY: 10,           // Absolute maximum context history regardless of user setting
-  MAX_CONCURRENT: 3,         // Maximum concurrent API requests
+  MAX_CONCURRENT: 5,         // Maximum concurrent API requests (increased for faster multi-lang)
   TASK_TIMEOUT_MS: 30000,    // 30 second timeout for stuck translations
   DEBUG: false,              // Set to true to enable verbose logging
 } as const

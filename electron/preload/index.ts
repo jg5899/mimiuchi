@@ -1,9 +1,47 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+// --------- IPC Channel Allowlist ---------
+const ALLOWED_CHANNELS = {
+  send: [
+    'close_app',
+    'toggle_maximize',
+    'minimize',
+    'update-check',
+    'transformers-translate',
+    'transformers-translate-multi',
+    'set-translation-api-key',
+    'set-translation-provider',
+    'httpserver-broadcast',
+    'open-external-url',
+    'typing-text-event',
+  ],
+  invoke: [
+    'open-win',
+    'httpserver-start',
+    'httpserver-stop',
+    'httpserver-status',
+    'get-network-interfaces',
+    'cloudflare-tunnel-start',
+    'cloudflare-tunnel-stop',
+    'cloudflare-tunnel-status',
+  ],
+  on: [
+    'main-process-message',
+    'maximized_state',
+    'transformers-translate-render',
+    'transformers-translate-render-multi',
+    'update-check',
+  ],
+}
+
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args
+    if (!ALLOWED_CHANNELS.on.includes(channel)) {
+      console.warn(`[Preload] Blocked ipcRenderer.on for channel: ${channel}`)
+      return ipcRenderer
+    }
     return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
   },
   off(...args: Parameters<typeof ipcRenderer.off>) {
@@ -12,19 +50,24 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   },
   send(...args: Parameters<typeof ipcRenderer.send>) {
     const [channel, ...omit] = args
+    if (!ALLOWED_CHANNELS.send.includes(channel)) {
+      console.warn(`[Preload] Blocked ipcRenderer.send for channel: ${channel}`)
+      return
+    }
     return ipcRenderer.send(channel, ...omit)
   },
   invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
     const [channel, ...omit] = args
+    if (!ALLOWED_CHANNELS.invoke.includes(channel)) {
+      console.warn(`[Preload] Blocked ipcRenderer.invoke for channel: ${channel}`)
+      return Promise.reject(new Error(`Channel not allowed: ${channel}`))
+    }
     return ipcRenderer.invoke(channel, ...omit)
   },
   removeListener(...args: Parameters<typeof ipcRenderer.invoke>) {
     const [channel, ...omit] = args
     return ipcRenderer.removeAllListeners(channel)
   },
-
-  // You can expose other APTs you need here.
-  // ...
 })
 
 // --------- Preload scripts loading ---------
