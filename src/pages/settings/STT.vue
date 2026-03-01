@@ -19,8 +19,8 @@
         <v-col :cols="12">
           <v-alert type="success" variant="tonal" density="compact">
             <div class="text-caption">
-              <strong>Deepgram Nova-2</strong><br><br>
-              <strong>Pricing:</strong> ~$0.0043 per minute of audio (~$0.26/hour)<br>
+              <strong>Deepgram Nova-3</strong><br><br>
+              <strong>Pricing:</strong> ~$0.0077 per minute of audio (~$0.46/hour)<br>
               <strong>Features:</strong> True real-time streaming, handles music/singing, speaker diarization, custom keyword boost<br>
               <strong>Supported Languages:</strong> 30+ languages including English, Spanish, Ukrainian, Russian<br>
               <strong>How it works:</strong> Real-time WebSocket streaming - no chunking delays!

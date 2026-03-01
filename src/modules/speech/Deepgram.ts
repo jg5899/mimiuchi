@@ -10,7 +10,7 @@ const DEEPGRAM_CONFIG = {
   MAX_RECONNECT_ATTEMPTS: 5,  // Maximum WebSocket reconnection attempts
 } as const
 
-// No keywords - let Nova-2 work naturally for best speed/accuracy
+// No keywords - let Nova-3 work naturally for best speed/accuracy
 const BIBLICAL_VOCABULARY: string[] = []
 
 class Deepgram {
@@ -112,7 +112,7 @@ class Deepgram {
 
     // Construct WebSocket URL with Deepgram parameters
     const params = new URLSearchParams({
-      model: 'nova-2',
+      model: 'nova-3',
       language: this.language,
       smart_format: 'true',
       interim_results: 'true',
@@ -121,17 +121,15 @@ class Deepgram {
       encoding: 'linear16',
       sample_rate: String(DEEPGRAM_CONFIG.SAMPLE_RATE),
       // Accuracy improvements
-      filler_words: 'false', // Remove "um", "uh" for cleaner church display
       numerals: 'true', // Better number formatting (e.g., "John 3:16")
       profanity_filter: 'false', // We handle this ourselves with church context
     })
 
-    // Combine biblical vocabulary with user's custom keywords
+    // Nova-3 uses keyterm prompting instead of keywords — smarter, contextual matching
     const allKeywords = [...BIBLICAL_VOCABULARY, ...this.customKeywords]
-    // Deepgram limits keywords, so take unique values
     const uniqueKeywords = [...new Set(allKeywords)]
-    if (uniqueKeywords.length > 0) {
-      params.append('keywords', uniqueKeywords.join(','))
+    for (const term of uniqueKeywords) {
+      params.append('keyterm', term)
     }
 
     const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`
