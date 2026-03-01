@@ -2,8 +2,8 @@ declare const window: any
 
 // Configuration constants
 const DEEPGRAM_CONFIG = {
-  ENDPOINTING_MS: 150,        // Fast phrase detection
-  BUFFER_SIZE: 4096,          // Audio buffer size for ScriptProcessorNode
+  ENDPOINTING_MS: 10,          // Fastest phrase finalization (10ms silence = done)
+  BUFFER_SIZE: 2048,           // Smaller buffer = lower latency audio capture
   SAMPLE_RATE: 16000,         // Audio sample rate in Hz
   MIN_BACKOFF_MS: 1000,       // Minimum reconnection delay
   MAX_BACKOFF_MS: 16000,      // Maximum reconnection delay
@@ -32,6 +32,7 @@ class Deepgram {
   // Reconnection management
   isReconnecting: boolean = false
   reconnectAttempts: number = 0
+  lastInterimTranscript: string = '' // Track last interim for UtteranceEnd finalization
 
   onresult: Function = () => {}
   onend: Function = () => {}
@@ -118,6 +119,7 @@ class Deepgram {
       interim_results: 'true',
       punctuate: 'true',
       endpointing: String(DEEPGRAM_CONFIG.ENDPOINTING_MS),
+      utterance_end_ms: '1000', // Force-finalize after 1s silence as safety net
       encoding: 'linear16',
       sample_rate: String(DEEPGRAM_CONFIG.SAMPLE_RATE),
       // Accuracy improvements
@@ -146,10 +148,24 @@ class Deepgram {
 
         if (data.type === 'Results') {
           const transcript = data.channel?.alternatives?.[0]?.transcript
+          const isFinal = data.is_final || false
+
+          console.log(`[Deepgram] ${isFinal ? 'FINAL' : 'interim'}: "${transcript?.substring(0, 50)}"`)
 
           if (transcript && transcript.trim()) {
-            const isFinal = data.is_final || false
+            if (!isFinal) {
+              this.lastInterimTranscript = transcript
+            } else {
+              this.lastInterimTranscript = ''
+            }
             this.onresult(transcript, isFinal)
+          }
+        }
+        else if (data.type === 'UtteranceEnd') {
+          // Deepgram detected end of speech — finalize any pending interim
+          if (this.lastInterimTranscript) {
+            this.onresult(this.lastInterimTranscript, true)
+            this.lastInterimTranscript = ''
           }
         }
         else if (data.type === 'Metadata') {
