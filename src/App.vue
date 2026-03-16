@@ -26,6 +26,7 @@ import { global_langs } from '@/plugins/i18n'
 
 import is_electron from '@/helpers/is_electron'
 import { translationQueue } from '@/helpers/translation_queue'
+import { startStatsReporter } from '@/helpers/stats_reporter'
 
 import SystemBar from '@/components/appbars/SystemBar.vue'
 import migrate_to_v0_5_0 from '@/migration/migrate_to_v0.5.0'
@@ -138,6 +139,28 @@ onMounted(() => {
   locale.value = settingsStore.language
   settingsStore.$subscribe((language, state) => {
     locale.value = settingsStore.language
+  })
+
+  startStatsReporter()
+
+  // Handle remote commands from manager service
+  window.ipcRenderer?.on('manager-command', (_event: any, cmd: any) => {
+    if (cmd.action === 'toggle_server') {
+      if (cmd.enabled) {
+        window.ipcRenderer?.invoke('httpserver-start', { port: httpServerStore.port })
+      } else {
+        window.ipcRenderer?.invoke('httpserver-stop')
+      }
+    }
+    if (cmd.action === 'toggle_tunnel') {
+      if (cmd.enabled) {
+        window.ipcRenderer?.invoke('cloudflare-tunnel-start', {
+          httpPort: httpServerStore.port
+        })
+      } else {
+        window.ipcRenderer?.invoke('cloudflare-tunnel-stop')
+      }
+    }
   })
 })
 </script>

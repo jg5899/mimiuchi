@@ -14,6 +14,7 @@ const ALLOWED_CHANNELS = {
     'httpserver-broadcast',
     'open-external-url',
     'typing-text-event',
+    'stats-update',
   ],
   invoke: [
     'open-win',
@@ -31,6 +32,7 @@ const ALLOWED_CHANNELS = {
     'transformers-translate-render',
     'transformers-translate-render-multi',
     'update-check',
+    'manager-command',
   ],
 }
 

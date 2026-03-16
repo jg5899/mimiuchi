@@ -9,6 +9,7 @@ import Store from 'electron-store'
 import { check_update } from './modules/check_update.js'
 import { HttpServer, HttpServerConfig } from './modules/httpserver.js'
 import { CloudflaredManager } from './modules/cloudflared.js'
+import { initManagerClient, updateRendererStats, destroyManagerClient } from './modules/manager-client.js'
 
 interface Schema {
   'win_bounds': object
@@ -188,6 +189,29 @@ function terminateTransformersWorker() {
 
 app.whenReady().then(() => {
   createWindow()
+
+  // Connect to manager service if available
+  initManagerClient({
+    getHttpServer: () => httpServer,
+    getCloudflared: () => cloudflaredManager,
+    handleCommand: (cmd) => {
+      switch (cmd.action) {
+        case 'toggle_server':
+          if (cmd.enabled && !httpServer) {
+            win?.webContents.send('manager-command', { action: 'toggle_server', enabled: true })
+          } else if (!cmd.enabled && httpServer) {
+            httpServer.stop().then(() => { httpServer = null })
+          }
+          break
+        case 'toggle_tunnel':
+          win?.webContents.send('manager-command', { action: 'toggle_tunnel', enabled: cmd.enabled })
+          break
+        case 'shutdown':
+          app.quit()
+          break
+      }
+    }
+  })
 })
 
 app.on('window-all-closed', () => {
@@ -209,6 +233,8 @@ app.on('before-quit', () => {
   if (cloudflaredManager) {
     cloudflaredManager.stop().catch(err => console.error('Error stopping Cloudflare tunnel:', err))
   }
+
+  destroyManagerClient()
 })
 
 app.on('second-instance', () => {
@@ -341,6 +367,10 @@ ipcMain.handle('httpserver-status', async () => {
 })
 
 // Broadcast transcription messages to HTTP display clients
+ipcMain.on('stats-update', (_event, stats) => {
+  updateRendererStats(stats)
+})
+
 ipcMain.on('httpserver-broadcast', (event, message: string) => {
   console.log('[Main IPC] Received httpserver-broadcast request, message length:', message?.length)
 
