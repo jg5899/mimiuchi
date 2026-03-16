@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { WebSocketServer, WebSocket } from 'ws'
 import { loadConfig, saveConfig, loadLastSession, saveLastSession } from './config.js'
+import { startPolling, getCachedFunds } from './funds.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ADMIN_PORT = 9090
@@ -59,7 +60,7 @@ adminWss.on('connection', (ws) => {
             app_running: electronProcess !== null,
             stats: latestStats,
             last_session: loadLastSession(),
-            funds: null
+            funds: getCachedFunds()
           }))
         } else {
           ws.send(JSON.stringify({ type: 'auth', status: 'denied' }))
@@ -215,7 +216,12 @@ httpServer.listen(ADMIN_PORT, '0.0.0.0', () => {
   if (!config.electron_path) {
     console.log('[manager] WARNING: electron_path not set. Edit ~/.mimiuchi-manager/config.json')
   }
+  startPolling()
 })
+
+setInterval(() => {
+  broadcastToAdmins({ type: 'funds', ...getCachedFunds() })
+}, 60000)
 
 httpServer.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
