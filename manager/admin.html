@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mimiuchi admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    /* --- PIN Screen --- */
+    #pin-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 16px;
+    }
+    #pin-screen h1 { font-size: 24px; font-weight: 600; }
+    #pin-screen input {
+      background: #1a1a2e;
+      border: 1px solid #2a2a3e;
+      color: #e0e0e0;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-size: 16px;
+      text-align: center;
+      width: 200px;
+      outline: none;
+    }
+    #pin-screen input:focus { border-color: #64b5f6; }
+    #pin-screen button {
+      background: #1b5e20;
+      color: #a5d6a7;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #pin-error { color: #ef5350; font-size: 13px; display: none; }
+
+    /* --- Top Bar --- */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: #1a1a2e;
+      border-bottom: 1px solid #2a2a3e;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .topbar-left h1 { font-size: 18px; font-weight: 600; }
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .badge-online { background: #1b5e20; color: #a5d6a7; }
+    .badge-offline { background: #b71c1c; color: #ef9a9a; }
+    .topbar-right { display: flex; gap: 12px; align-items: center; }
+    .topbar-right .uptime { font-size: 12px; color: #666; }
+    .btn {
+      border: none;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-danger { background: #c62828; color: white; }
+    .btn-success { background: #1b5e20; color: #a5d6a7; }
+    .btn-large { padding: 12px 32px; font-size: 14px; font-weight: 600; }
+
+    /* --- Grid --- */
+    .grid {
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* --- Cards --- */
+    .card {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #2a2a3e;
+    }
+    .card-label {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .card-big { font-size: 32px; font-weight: 700; color: #64b5f6; margin: 4px 0; }
+    .card-sub { font-size: 11px; color: #666; }
+    .card hr { border: none; border-top: 1px solid #2a2a3e; margin: 10px 0; }
+
+    /* --- Toggle Switch --- */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .toggle-label { font-size: 13px; font-weight: 500; }
+    .toggle-url { font-size: 10px; color: #666; }
+    .toggle {
+      width: 40px; height: 22px;
+      background: #333;
+      border-radius: 11px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle.on { background: #1b5e20; }
+    .toggle .knob {
+      width: 18px; height: 18px;
+      background: #666;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px; left: 2px;
+      transition: all 0.2s;
+    }
+    .toggle.on .knob { left: 20px; background: #4caf50; }
+
+    /* --- Tags --- */
+    .tag {
+      font-size: 10px;
+      background: #1b5e20;
+      color: #a5d6a7;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: inline-block;
+      margin: 2px;
+    }
+
+    /* --- Stat Rows --- */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      line-height: 2;
+    }
+    .stat-label { color: #888; }
+
+    /* --- Offline Screen --- */
+    #offline-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    /* --- Status Dot --- */
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .dot-green { background: #4caf50; }
+    .dot-off { background: #555; }
+  </style>
+</head>
+<body>
+
+  <!-- PIN Screen -->
+  <div id="pin-screen">
+    <h1>mimiuchi admin</h1>
+    <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="20">
+    <button onclick="authenticate()">Connect</button>
+    <div id="pin-error">Invalid PIN</div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" style="display:none;">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1>mimiuchi</h1>
+        <span id="status-badge" class="badge badge-offline">OFFLINE</span>
+      </div>
+      <div class="topbar-right">
+        <span class="uptime" id="uptime-text"></span>
+        <button id="app-toggle-btn" class="btn btn-success" onclick="toggleApp()">Start App</button>
+      </div>
+    </div>
+
+    <div class="grid" id="stats-grid">
+      <!-- Viewers -->
+      <div class="card">
+        <div class="card-label">Viewers</div>
+        <div class="card-big" id="viewer-count">0</div>
+        <div class="card-sub">connected now</div>
+        <hr>
+        <div id="viewer-list"></div>
+      </div>
+
+      <!-- Server & Tunnel -->
+      <div class="card">
+        <div class="card-label">Server & Tunnel</div>
+        <div style="margin: 12px 0;">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">HTTP Server</div>
+              <div class="toggle-url" id="server-url">-</div>
+            </div>
+            <div id="server-toggle" class="toggle" onclick="toggleServer()">
+              <div class="knob"></div>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Cloudflare Tunnel</div>
+              <div class="toggle-url" id="tunnel-url">-</div>
+            </div>
+            <div id="tunnel-toggle" class="toggle" onclick="toggleTunnel()">
+              <div class="knob"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Funds -->
+      <div class="card">
+        <div class="card-label">Funds Remaining</div>
+        <div style="margin: 12px 0;" id="funds-container">
+          <div class="card-sub">Not configured</div>
+        </div>
+      </div>
+
+      <!-- STT -->
+      <div class="card">
+        <div class="card-label">Speech-to-Text</div>
+        <div style="display: flex; align-items: center; margin: 10px 0;">
+          <span class="dot dot-off" id="stt-dot"></span>
+          <span id="stt-engine" style="font-size: 14px; font-weight: 500;">-</span>
+        </div>
+        <div id="stt-status" style="font-size: 12px; color: #aaa;">Inactive</div>
+      </div>
+
+      <!-- Translation -->
+      <div class="card">
+        <div class="card-label">Translation</div>
+        <div id="translation-provider" style="font-size: 14px; font-weight: 500; margin: 8px 0;">-</div>
+        <div id="translation-langs" style="margin: 8px 0;"></div>
+        <hr>
+        <div class="card-sub" id="translation-queue">-</div>
+      </div>
+
+      <!-- Session -->
+      <div class="card">
+        <div class="card-label">Session</div>
+        <div style="margin: 10px 0;">
+          <div class="stat-row"><span class="stat-label">Uptime</span><span id="s-uptime">-</span></div>
+          <div class="stat-row"><span class="stat-label">Words transcribed</span><span id="s-words">0</span></div>
+          <div class="stat-row"><span class="stat-label">Translations served</span><span id="s-translations">0</span></div>
+          <div class="stat-row"><span class="stat-label">Peak viewers</span><span id="s-peak">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Offline overlay -->
+    <div id="offline-screen">
+      <div style="font-size: 48px; margin-bottom: 12px;">&#9208;</div>
+      <span class="badge badge-offline">OFFLINE</span>
+      <div style="font-size: 14px; color: #888; margin: 16px 0;">Electron app is not running</div>
+      <button class="btn btn-success btn-large" onclick="toggleApp()">Start App</button>
+      <div class="card-sub" id="last-session-text" style="margin-top: 12px;"></div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null
+    let appRunning = false
+    let reconnectPin = ''
+
+    document.getElementById('pin-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') authenticate()
+    })
+
+    function authenticate() {
+      const pin = document.getElementById('pin-input').value
+      reconnectPin = pin
+      connectWs(pin)
+    }
+
+    function connectWs(pin) {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+      ws = new WebSocket(protocol + '//' + location.host)
+
+      ws.onopen = function() {
+        ws.send(JSON.stringify({ type: 'auth', pin: pin }))
+      }
+
+      ws.onmessage = function(event) {
+        var msg = JSON.parse(event.data)
+        if (msg.type === 'auth') {
+          if (msg.status === 'ok') {
+            document.getElementById('pin-screen').style.display = 'none'
+            document.getElementById('dashboard').style.display = 'block'
+            document.getElementById('pin-error').style.display = 'none'
+          } else {
+            document.getElementById('pin-error').style.display = 'block'
+            ws.close()
+            return
+          }
+        }
+        handleMessage(msg)
+      }
+
+      ws.onclose = function() {
+        if (document.getElementById('dashboard').style.display === 'block') {
+          setTimeout(function() { connectWs(reconnectPin) }, 3000)
+        }
+      }
+    }
+
+    function handleMessage(msg) {
+      switch (msg.type) {
+        case 'state':
+          setAppRunning(msg.app_running)
+          if (msg.stats) updateStats(msg.stats)
+          if (msg.funds) updateFunds(msg.funds)
+          if (msg.last_session) updateLastSession(msg.last_session)
+          break
+        case 'stats':
+          updateStats(msg)
+          break
+        case 'app_status':
+          setAppRunning(msg.running)
+          break
+        case 'funds':
+          updateFunds(msg)
+          break
+      }
+    }
+
+    function setAppRunning(running) {
+      appRunning = running
+      var badge = document.getElementById('status-badge')
+      var btn = document.getElementById('app-toggle-btn')
+      var grid = document.getElementById('stats-grid')
+      var offline = document.getElementById('offline-screen')
+
+      if (running) {
+        badge.textContent = 'ONLINE'
+        badge.className = 'badge badge-online'
+        btn.textContent = 'Stop App'
+        btn.className = 'btn btn-danger'
+        grid.style.display = 'grid'
+        offline.style.display = 'none'
+      } else {
+        badge.textContent = 'OFFLINE'
+        badge.className = 'badge badge-offline'
+        btn.textContent = 'Start App'
+        btn.className = 'btn btn-success'
+        grid.style.display = 'none'
+        offline.style.display = 'flex'
+      }
+    }
+
+    function updateStats(s) {
+      // Viewers
+      document.getElementById('viewer-count').textContent = s.viewers ? s.viewers.count : 0
+      var listEl = document.getElementById('viewer-list')
+      listEl.textContent = ''
+      var clients = (s.viewers && s.viewers.clients) ? s.viewers.clients : []
+      var shown = clients.slice(0, 6)
+      for (var i = 0; i < shown.length; i++) {
+        var row = document.createElement('div')
+        row.style.cssText = 'display:flex;justify-content:space-between;font-size:11px;line-height:1.8'
+        var ipSpan = document.createElement('span')
+        ipSpan.style.color = '#aaa'
+        ipSpan.textContent = shown[i].ip
+        var langSpan = document.createElement('span')
+        langSpan.style.color = '#81c784'
+        langSpan.textContent = shown[i].lang || 'All'
+        row.appendChild(ipSpan)
+        row.appendChild(langSpan)
+        listEl.appendChild(row)
+      }
+      if (clients.length > 6) {
+        var more = document.createElement('div')
+        more.className = 'card-sub'
+        more.textContent = '+' + (clients.length - 6) + ' more...'
+        listEl.appendChild(more)
+      }
+
+      // Server
+      if (s.server) {
+        var sToggle = document.getElementById('server-toggle')
+        sToggle.className = s.server.running ? 'toggle on' : 'toggle'
+        document.getElementById('server-url').textContent = s.server.running ? s.server.local_url : '-'
+      }
+
+      // Tunnel
+      if (s.tunnel) {
+        var tToggle = document.getElementById('tunnel-toggle')
+        tToggle.className = s.tunnel.running ? 'toggle on' : 'toggle'
+        document.getElementById('tunnel-url').textContent = s.tunnel.running ? (s.tunnel.url || s.tunnel.tunnelUrl || '-') : '-'
+      }
+
+      // STT
+      if (s.stt) {
+        var dot = document.getElementById('stt-dot')
+        dot.className = s.stt.listening ? 'dot dot-green' : 'dot dot-off'
+        var engine = s.stt.engine || 'none'
+        if (engine === 'deepgram') engine = 'Deepgram ' + (s.stt.model || '')
+        else if (engine === 'whisper') engine = 'Whisper (OpenAI)'
+        else if (engine === 'webspeech') engine = 'Web Speech API'
+        document.getElementById('stt-engine').textContent = engine
+        document.getElementById('stt-status').textContent = s.stt.listening ? 'Mic: Active' : 'Mic: Inactive'
+      }
+
+      // Translation
+      if (s.translation) {
+        var prov = s.translation.provider || '-'
+        if (prov === 'openai') prov = 'OpenAI (GPT-4o)'
+        else if (prov === 'deepl') prov = 'DeepL'
+        document.getElementById('translation-provider').textContent = prov
+        var langsEl = document.getElementById('translation-langs')
+        langsEl.textContent = ''
+        var langs = s.translation.languages || []
+        for (var j = 0; j < langs.length; j++) {
+          var tag = document.createElement('span')
+          tag.className = 'tag'
+          tag.textContent = langs[j]
+          langsEl.appendChild(tag)
+        }
+        document.getElementById('translation-queue').textContent =
+          langs.length + ' language' + (langs.length !== 1 ? 's' : '') +
+          ' \u00b7 queue: ' + (s.translation.queue_pending || 0) + ' pending'
+      }
+
+      // Session
+      if (s.session) {
+        document.getElementById('s-uptime').textContent = formatUptime(s.session.started_at)
+        document.getElementById('s-words').textContent = (s.session.words_transcribed || 0).toLocaleString()
+        document.getElementById('s-translations').textContent = (s.session.translations_served || 0).toLocaleString()
+        document.getElementById('s-peak').textContent = s.session.peak_viewers || 0
+        document.getElementById('uptime-text').textContent = 'Uptime: ' + formatUptime(s.session.started_at)
+      }
+    }
+
+    function updateFunds(funds) {
+      var container = document.getElementById('funds-container')
+      container.textContent = ''
+      var hasAny = false
+
+      var providers = ['deepgram', 'openai']
+      for (var i = 0; i < providers.length; i++) {
+        var name = providers[i]
+        var data = funds[name]
+        if (!data || !data.available) continue
+        hasAny = true
+
+        var balance = data.balance || 0
+        var color = balance > 10 ? 'green' : balance > 3 ? 'amber' : 'red'
+        var pct = Math.min(100, (balance / 50) * 100)
+        var label = '$' + balance.toFixed(2) + (data.manual ? ' (manual)' : '')
+
+        var row = document.createElement('div')
+        row.style.marginBottom = '12px'
+
+        var header = document.createElement('div')
+        header.style.cssText = 'display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px'
+        var nameSpan = document.createElement('span')
+        nameSpan.textContent = name.charAt(0).toUpperCase() + name.slice(1)
+        var valSpan = document.createElement('span')
+        valSpan.style.color = color === 'green' ? '#81c784' : color === 'amber' ? '#ffb74d' : '#ef5350'
+        valSpan.textContent = label
+        header.appendChild(nameSpan)
+        header.appendChild(valSpan)
+
+        var bar = document.createElement('div')
+        bar.style.cssText = 'height:4px;background:#2a2a3e;border-radius:2px;overflow:hidden'
+        var fill = document.createElement('div')
+        fill.style.cssText = 'height:100%;border-radius:2px;transition:width 0.5s;width:' + pct + '%'
+        fill.style.background = color === 'green' ? '#81c784' : color === 'amber' ? '#ffb74d' : '#ef5350'
+        bar.appendChild(fill)
+
+        row.appendChild(header)
+        row.appendChild(bar)
+        container.appendChild(row)
+      }
+
+      if (!hasAny) {
+        var msg = document.createElement('div')
+        msg.className = 'card-sub'
+        msg.textContent = 'Not configured'
+        container.appendChild(msg)
+      }
+    }
+
+    function updateLastSession(session) {
+      var el = document.getElementById('last-session-text')
+      if (!session || !session.words_transcribed) {
+        el.textContent = ''
+        return
+      }
+      el.textContent = 'Last session: ' +
+        (session.words_transcribed || 0).toLocaleString() + ' words \u00b7 ' +
+        (session.translations_served || 0).toLocaleString() + ' translations'
+    }
+
+    function formatUptime(startedAt) {
+      if (!startedAt) return '-'
+      var diff = Math.floor((Date.now() - startedAt) / 1000)
+      var h = Math.floor(diff / 3600)
+      var m = Math.floor((diff % 3600) / 60)
+      return h > 0 ? h + 'h ' + m + 'm' : m + 'm'
+    }
+
+    function toggleApp() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return
+      ws.send(JSON.stringify({
+        type: 'command',
+        action: appRunning ? 'stop_app' : 'start_app'
+      }))
+    }
+
+    function toggleServer() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !appRunning) return
+      var isOn = document.getElementById('server-toggle').classList.contains('on')
+      ws.send(JSON.stringify({ type: 'command', action: 'toggle_server', enabled: !isOn }))
+    }
+
+    function toggleTunnel() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !appRunning) return
+      var isOn = document.getElementById('tunnel-toggle').classList.contains('on')
+      ws.send(JSON.stringify({ type: 'command', action: 'toggle_tunnel', enabled: !isOn }))
+    }
+  </script>
+</body>
+</html>
