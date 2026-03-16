@@ -8,6 +8,12 @@ interface HttpServerConfig {
   publicPath: string
 }
 
+interface ClientInfo {
+  ip: string
+  lang: string | null
+  connected_at: number
+}
+
 class HttpServer {
   private server: http.Server | null = null
   private wss: WebSocketServer | null = null
@@ -20,7 +26,8 @@ class HttpServer {
   private cachedDisplayHtml: Buffer | null = null
   // Connection tracking
   private readonly MAX_CONNECTIONS: number = 50
-  private connectionCount: number = 0
+  private clientInfo: Map<WebSocket, ClientInfo> = new Map()
+  private peakViewers: number = 0
 
   constructor(config: HttpServerConfig) {
     this.port = config.port
@@ -85,15 +92,18 @@ class HttpServer {
 
       this.wss.on('connection', (ws, req) => {
         // Check connection limit
-        if (this.connectionCount >= this.MAX_CONNECTIONS) {
+        if (this.clientInfo.size >= this.MAX_CONNECTIONS) {
           console.warn('[HTTPServer] Max connections reached, rejecting client')
           ws.close(1008, 'Server at capacity')
           return
         }
 
-        this.connectionCount++
-        const clientIp = req.socket.remoteAddress
-        console.log(`[HTTPServer] Display client connected (${this.connectionCount}/${this.MAX_CONNECTIONS}) from ${clientIp}`)
+        const clientIp = req.socket.remoteAddress || 'unknown'
+        this.clientInfo.set(ws, { ip: clientIp, lang: null, connected_at: Date.now() })
+        if (this.clientInfo.size > this.peakViewers) {
+          this.peakViewers = this.clientInfo.size
+        }
+        console.log(`[HTTPServer] Display client connected (${this.clientInfo.size}/${this.MAX_CONNECTIONS}) from ${clientIp}`)
 
         // Initialize with no language filter (show all by default)
         this.subscriptions.set(ws, null)
@@ -105,6 +115,8 @@ class HttpServer {
             if (message.type === 'subscribe' && message.targetLang) {
               console.log(`[HTTPServer] Client subscribed to language: ${message.targetLang}`)
               this.subscriptions.set(ws, message.targetLang)
+              const info = this.clientInfo.get(ws)
+              if (info) info.lang = message.targetLang
             }
           } catch (error) {
             console.error('[HTTPServer] Error parsing WebSocket message:', error)
@@ -112,17 +124,15 @@ class HttpServer {
         })
 
         ws.on('close', () => {
-          this.connectionCount--
-          console.log(`[HTTPServer] Display client disconnected (${this.connectionCount}/${this.MAX_CONNECTIONS})`)
-          // Clean up subscription tracking
+          this.clientInfo.delete(ws)
+          console.log(`[HTTPServer] Display client disconnected (${this.clientInfo.size}/${this.MAX_CONNECTIONS})`)
           this.subscriptions.delete(ws)
         })
 
         ws.on('error', (error) => {
           console.error('[HTTPServer] WebSocket error:', error)
-          // Clean up on error
+          this.clientInfo.delete(ws)
           this.subscriptions.delete(ws)
-          this.connectionCount--
         })
 
         // Set up ping/pong to detect dead connections
@@ -186,7 +196,8 @@ class HttpServer {
           this.isRunning = false
           this.server = null
           this.wss = null
-          this.connectionCount = 0
+          this.clientInfo.clear()
+          this.peakViewers = 0
           this.subscriptions.clear()
           console.log('[HTTPServer] HTTP server stopped')
           resolve()
@@ -266,6 +277,18 @@ class HttpServer {
   getIsRunning(): boolean {
     return this.isRunning
   }
+
+  getClientList(): ClientInfo[] {
+    return Array.from(this.clientInfo.values())
+  }
+
+  getPeakViewers(): number {
+    return this.peakViewers
+  }
+
+  getConnectionCount(): number {
+    return this.clientInfo.size
+  }
 }
 
-export { HttpServer, HttpServerConfig }
+export { HttpServer, HttpServerConfig, ClientInfo }
