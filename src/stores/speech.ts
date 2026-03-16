@@ -357,7 +357,7 @@ export const useSpeechStore = defineStore('speech', () => {
 
       // Add to multi-translation system
       const logIndex = multiTranslationStore.addTranslationLog(log.transcript, true)
-      // console.log('[Speech] Added translation log, index:', logIndex, 'transcript:', log.transcript.substring(0, 50))
+      logsStore.countWords(log.transcript)
 
       // Multi-language translation - works independently of main translation toggle
       // ONLY translate final results to reduce API usage (skip interim results)

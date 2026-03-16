@@ -116,6 +116,7 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
 
   // Multi-language translation logs
   const multiLogs = ref<TranslationLog[]>([])
+  const translationsServed = ref(0)
 
   // Get enabled language streams
   const enabledStreams = computed(() => {
@@ -160,6 +161,7 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
 
     if (multiLogs.value[logIndex]) {
       multiLogs.value[logIndex].translations[langCode] = translation
+      translationsServed.value++
       console.log('[MultiTranslation] Translation updated. Log now has:', Object.keys(multiLogs.value[logIndex].translations))
     } else {
       console.error('[MultiTranslation] Log at index', logIndex, 'does not exist!')
@@ -192,6 +194,7 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
   return {
     languageStreams,
     multiLogs,
+    translationsServed,
     enabledStreams,
     enabledTargetLangs,
     addTranslationLog,

@@ -21,6 +21,7 @@ export const useLogsStore = defineStore('logs', () => {
   // Separate tracking for current interim result to prevent jumpy updates
   // Interim text updates this ref; when finalized, it moves to logs array
   const currentInterim = ref<string>('')
+  const wordsTranscribed = ref(0)
 
   // Debounce interim updates to prevent rapid flickering (updates at most every 50ms)
   let interimDebounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -180,15 +181,21 @@ export const useLogsStore = defineStore('logs', () => {
     })
   }
 
+  function countWords(text: string) {
+    wordsTranscribed.value += text.trim().split(/\s+/).filter(Boolean).length
+  }
+
   return {
     logs,
     loading_result,
     wait_interval,
     currentInterim,
+    wordsTranscribed,
     setInterim,
     exportLogs,
     trimLogs,
     clearInterim,
     cleanup,
+    countWords,
   }
 })
