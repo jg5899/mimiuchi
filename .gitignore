@@ -27,3 +27,9 @@ release
 *.njsproj
 *.sln
 *.sw?
+
+# Manager
+manager/node_modules/
+
+# Superpowers
+.superpowers/
