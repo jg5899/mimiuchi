@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
 import type { Deepgram } from '@/modules/speech'
 
 export const useDefaultStore = defineStore('default', () => {
   const typing_limited = ref(false)
   const broadcasting = ref<boolean>(false)
   const connection_count = ref<number>(0)
-  const speech = ref(<Deepgram>{})
+  const speech = shallowRef(<Deepgram>{})
   const audio = ref<HTMLAudioElement>(new Audio())
   const snackbar = ref({
     enabled: false,

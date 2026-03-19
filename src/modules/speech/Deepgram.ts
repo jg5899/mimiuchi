@@ -2,7 +2,7 @@ declare const window: any
 
 // Configuration constants
 const DEEPGRAM_CONFIG = {
-  ENDPOINTING_MS: 10,          // Fastest phrase finalization (10ms silence = done)
+  ENDPOINTING_MS: 300,         // 300ms silence = finalize phrase (allows interims to flow)
   BUFFER_SIZE: 2048,           // Smaller buffer = lower latency audio capture
   SAMPLE_RATE: 16000,         // Audio sample rate in Hz
   MIN_BACKOFF_MS: 1000,       // Minimum reconnection delay
@@ -91,11 +91,8 @@ class Deepgram {
         })
       }
 
-      // Connect WebSocket
+      // Connect WebSocket (audio streaming starts in onopen callback)
       this.connectWebSocket()
-
-      // Start streaming audio
-      this.startAudioStream()
 
       this.isRecording = true
       this.onstart()
@@ -115,7 +112,6 @@ class Deepgram {
     const params = new URLSearchParams({
       model: 'nova-3',
       language: this.language,
-      smart_format: 'true',
       interim_results: 'true',
       punctuate: 'true',
       endpointing: String(DEEPGRAM_CONFIG.ENDPOINTING_MS),
@@ -140,6 +136,7 @@ class Deepgram {
 
     this.socket.onopen = () => {
       console.log('Deepgram WebSocket connected')
+      this.startAudioStream()
     }
 
     this.socket.onmessage = (message) => {
@@ -211,8 +208,7 @@ class Deepgram {
 
         setTimeout(() => {
           if (this.listening) {
-            this.connectWebSocket()
-            this.startAudioStream()
+            this.connectWebSocket() // startAudioStream() called in onopen
           }
           // Reset flag AFTER reconnection attempt
           this.isReconnecting = false
