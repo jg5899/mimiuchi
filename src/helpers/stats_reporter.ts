@@ -15,7 +15,7 @@ export function startStatsReporter() {
     const multiStore = useMultiTranslationStore()
     const defaultStore = useDefaultStore()
 
-    const speech = defaultStore.speech
+    const speech = defaultStore.speech.value
 
     const stats = {
       stt: {

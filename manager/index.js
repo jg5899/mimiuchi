@@ -57,7 +57,7 @@ adminWss.on('connection', (ws) => {
           ws.send(JSON.stringify({ type: 'auth', status: 'ok' }))
           ws.send(JSON.stringify({
             type: 'state',
-            app_running: electronProcess !== null,
+            app_running: electronProcess !== null || (electronWs !== null && electronWs.readyState === WebSocket.OPEN),
             stats: latestStats,
             last_session: loadLastSession(),
             funds: getCachedFunds()
