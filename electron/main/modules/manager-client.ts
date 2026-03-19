@@ -1,3 +1,4 @@
+import * as os from 'node:os'
 import WebSocket from 'ws'
 import type { HttpServer } from './httpserver.js'
 import type { CloudflaredManager } from './cloudflared.js'
@@ -92,6 +93,19 @@ function sendStats() {
       port: httpServer?.getPort() || 8080,
       local_url: httpServer?.getIsRunning()
         ? 'http://localhost:' + httpServer.getPort()
+        : null,
+      network_url: httpServer?.getIsRunning()
+        ? (() => {
+            const nets = os.networkInterfaces()
+            for (const addrs of Object.values(nets)) {
+              for (const addr of addrs || []) {
+                if (!addr.internal && addr.family === 'IPv4') {
+                  return 'http://' + addr.address + ':' + httpServer!.getPort()
+                }
+              }
+            }
+            return null
+          })()
         : null
     },
     tunnel: cloudflared?.getStatus() || { running: false, tunnelUrl: null },

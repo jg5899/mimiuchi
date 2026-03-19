@@ -161,6 +161,9 @@ onMounted(() => {
         window.ipcRenderer?.invoke('cloudflare-tunnel-stop')
       }
     }
+    if (cmd.action === 'toggle_mic') {
+      speechStore.toggle_listen()
+    }
   })
 })
 </script>

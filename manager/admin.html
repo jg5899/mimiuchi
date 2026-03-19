@@ -236,6 +236,12 @@
         </div>
       </div>
 
+      <!-- Connection URLs -->
+      <div class="card" id="connection-card" style="display: none;">
+        <div class="card-label">Connection URLs</div>
+        <div style="margin: 10px 0;" id="connection-urls"></div>
+      </div>
+
       <!-- Funds -->
       <div class="card">
         <div class="card-label">Funds Remaining</div>
@@ -252,6 +258,11 @@
           <span id="stt-engine" style="font-size: 14px; font-weight: 500;">-</span>
         </div>
         <div id="stt-status" style="font-size: 12px; color: #aaa;">Inactive</div>
+        <div style="margin-top: 10px;">
+          <button id="mic-toggle-btn" class="btn btn-success" onclick="toggleMic()" style="width: 100%;">
+            &#127908; Start Mic
+          </button>
+        </div>
       </div>
 
       <!-- Translation -->
@@ -416,6 +427,9 @@
         document.getElementById('tunnel-url').textContent = s.tunnel.running ? (s.tunnel.url || s.tunnel.tunnelUrl || '-') : '-'
       }
 
+      // Connection URLs
+      updateConnectionUrls(s.server, s.tunnel)
+
       // STT
       if (s.stt) {
         var dot = document.getElementById('stt-dot')
@@ -426,6 +440,7 @@
         else if (engine === 'webspeech') engine = 'Web Speech API'
         document.getElementById('stt-engine').textContent = engine
         document.getElementById('stt-status').textContent = s.stt.listening ? 'Mic: Active' : 'Mic: Inactive'
+        updateMicButton(s.stt.listening)
       }
 
       // Translation
@@ -545,6 +560,59 @@
       if (!ws || ws.readyState !== WebSocket.OPEN || !appRunning) return
       var isOn = document.getElementById('tunnel-toggle').classList.contains('on')
       ws.send(JSON.stringify({ type: 'command', action: 'toggle_tunnel', enabled: !isOn }))
+    }
+
+    var micActive = false
+    function toggleMic() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !appRunning) return
+      ws.send(JSON.stringify({ type: 'command', action: 'toggle_mic' }))
+    }
+
+    function updateMicButton(listening) {
+      micActive = listening
+      var btn = document.getElementById('mic-toggle-btn')
+      if (listening) {
+        btn.textContent = '\u23F9 Stop Mic'
+        btn.className = 'btn btn-danger'
+      } else {
+        btn.textContent = '\uD83C\uDFA4 Start Mic'
+        btn.className = 'btn btn-success'
+      }
+    }
+
+    function updateConnectionUrls(server, tunnel) {
+      var card = document.getElementById('connection-card')
+      var container = document.getElementById('connection-urls')
+      container.textContent = ''
+
+      if (!server || !server.running) {
+        card.style.display = 'none'
+        return
+      }
+      card.style.display = 'block'
+
+      var urls = []
+      if (server.local_url) urls.push({ label: 'Display (Local)', url: server.local_url })
+      if (server.network_url) urls.push({ label: 'Display (Network)', url: server.network_url })
+      if (tunnel && tunnel.running && (tunnel.url || tunnel.tunnelUrl)) {
+        urls.push({ label: 'Display (Public)', url: tunnel.url || tunnel.tunnelUrl })
+      }
+
+      for (var i = 0; i < urls.length; i++) {
+        var row = document.createElement('div')
+        row.style.cssText = 'margin-bottom: 8px;'
+        var label = document.createElement('div')
+        label.style.cssText = 'font-size: 11px; color: #888;'
+        label.textContent = urls[i].label
+        var link = document.createElement('a')
+        link.href = urls[i].url
+        link.target = '_blank'
+        link.style.cssText = 'font-size: 12px; color: #64b5f6; text-decoration: none; word-break: break-all;'
+        link.textContent = urls[i].url
+        row.appendChild(label)
+        row.appendChild(link)
+        container.appendChild(row)
+      }
     }
   </script>
 </body>

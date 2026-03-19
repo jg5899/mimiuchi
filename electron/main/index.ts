@@ -206,6 +206,9 @@ app.whenReady().then(() => {
         case 'toggle_tunnel':
           win?.webContents.send('manager-command', { action: 'toggle_tunnel', enabled: cmd.enabled })
           break
+        case 'toggle_mic':
+          win?.webContents.send('manager-command', { action: 'toggle_mic' })
+          break
         case 'shutdown':
           app.quit()
           break

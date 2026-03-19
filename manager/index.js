@@ -123,6 +123,7 @@ function handleCommand(msg) {
       break
     case 'toggle_server':
     case 'toggle_tunnel':
+    case 'toggle_mic':
       if (electronWs && electronWs.readyState === WebSocket.OPEN) {
         electronWs.send(JSON.stringify(msg))
       }
