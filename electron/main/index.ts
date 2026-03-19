@@ -5,6 +5,15 @@ import { fileURLToPath } from 'node:url'
 import { Worker } from 'node:worker_threads'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 
+// Prevent uncaught EPIPE and other errors from crashing the app
+process.on('uncaughtException', (error) => {
+  if ((error as any).code === 'EPIPE') {
+    console.warn('[Main] Suppressed EPIPE error')
+    return
+  }
+  console.error('[Main] Uncaught exception:', error)
+})
+
 import Store from 'electron-store'
 import { check_update } from './modules/check_update.js'
 import { HttpServer, HttpServerConfig } from './modules/httpserver.js'

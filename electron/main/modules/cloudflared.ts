@@ -73,6 +73,11 @@ class CloudflaredManager {
       stdio: ['ignore', 'pipe', 'pipe']
     })
 
+    // Handle pipe errors to prevent EPIPE crashes
+    this.process.stdout?.on('error', () => {})
+    this.process.stderr?.on('error', () => {})
+    this.process.stdin?.on('error', () => {})
+
     // Parse stdout/stderr for tunnel URL
     const urlPromise = new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -136,6 +141,11 @@ class CloudflaredManager {
     ], {
       stdio: ['ignore', 'pipe', 'pipe']
     })
+
+    // Handle pipe errors to prevent EPIPE crashes
+    this.process.stdout?.on('error', () => {})
+    this.process.stderr?.on('error', () => {})
+    this.process.stdin?.on('error', () => {})
 
     // For named tunnels, we wait for successful connection message
     const connectedPromise = new Promise<void>((resolve, reject) => {
