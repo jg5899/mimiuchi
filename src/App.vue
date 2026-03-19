@@ -154,9 +154,16 @@ onMounted(() => {
     }
     if (cmd.action === 'toggle_tunnel') {
       if (cmd.enabled) {
-        window.ipcRenderer?.invoke('cloudflare-tunnel-start', {
-          httpPort: httpServerStore.port
-        })
+        const config: any = { httpPort: httpServerStore.port }
+        if (httpServerStore.tunnelMode === 'named' && httpServerStore.tunnelToken) {
+          config.token = httpServerStore.tunnelToken
+          if (httpServerStore.tunnelHostname) {
+            config.customHostname = httpServerStore.tunnelHostname.startsWith('http')
+              ? httpServerStore.tunnelHostname
+              : `https://${httpServerStore.tunnelHostname}`
+          }
+        }
+        window.ipcRenderer?.invoke('cloudflare-tunnel-start', config)
       } else {
         window.ipcRenderer?.invoke('cloudflare-tunnel-stop')
       }
