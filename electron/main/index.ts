@@ -3,6 +3,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Worker } from 'node:worker_threads'
+import * as fs from 'node:fs'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 
 // Prevent uncaught EPIPE and other errors from crashing the app
@@ -265,6 +266,23 @@ app.on('activate', () => {
   else {
     createWindow()
   }
+})
+
+// Load seed settings from install script (first launch only)
+ipcMain.handle('load-seed-settings', async () => {
+  try {
+    const seedPath = path.join(app.getPath('userData'), 'seed-settings.json')
+    if (fs.existsSync(seedPath)) {
+      const data = JSON.parse(fs.readFileSync(seedPath, 'utf-8'))
+      console.log('[Main] Loaded seed settings from', seedPath)
+      // Delete seed file after reading (one-time use)
+      fs.unlinkSync(seedPath)
+      return data
+    }
+  } catch (error) {
+    console.error('[Main] Failed to load seed settings:', error)
+  }
+  return null
 })
 
 // New window example arg: new windows url

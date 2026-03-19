@@ -87,6 +87,23 @@ httpServerStore.$patch(JSON.parse(localStorage.getItem('httpserver') || '{}'))
 speakerProfilesStore.$patch(JSON.parse(localStorage.getItem('speaker_profiles') || '{}'))
 multiTranslationStore.$patch(JSON.parse(localStorage.getItem('multi_translation') || '{}'))
 
+// Seed settings: on first launch, load pre-configured keys from seed file
+// Created by install.sh — only applies if localStorage has no keys yet
+if (is_electron() && !localStorage.getItem('_seed_applied')) {
+  try {
+    const seedPath = window.ipcRenderer ? null : null // resolved via IPC below
+    window.ipcRenderer?.invoke('load-seed-settings').then((seed: any) => {
+      if (seed) {
+        console.log('[App] Applying seed settings from install')
+        if (seed.speech) speechStore.$patch(seed.speech)
+        if (seed.translation) translationStore.$patch(seed.translation)
+        if (seed.httpserver) httpServerStore.$patch(seed.httpserver)
+        localStorage.setItem('_seed_applied', 'true')
+      }
+    }).catch(() => {})
+  } catch { /* no seed file, normal first run */ }
+}
+
 // NOW initialize translation queue with stores (after they're loaded from localStorage)
 translationQueue.initialize(translationStore, multiTranslationStore)
 console.log('[App.vue] Translation queue initialized with stores:', {

@@ -17,6 +17,7 @@ release
 # Environment and secrets
 .env
 .env.*
+install/secrets.json
 
 # Editor directories and files
 .vscode/.debug.env

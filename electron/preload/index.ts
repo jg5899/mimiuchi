@@ -18,6 +18,7 @@ const ALLOWED_CHANNELS = {
   ],
   invoke: [
     'open-win',
+    'load-seed-settings',
     'httpserver-start',
     'httpserver-stop',
     'httpserver-status',
