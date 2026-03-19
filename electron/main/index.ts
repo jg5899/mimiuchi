@@ -280,16 +280,24 @@ ipcMain.on('close_app', () => {
 })
 // event for toggling maximized
 ipcMain.on('toggle_maximize', () => {
+  if (!win) return
   win.isMaximized() ? win.unmaximize() : win.maximize()
 })
 // event for minimizing
 ipcMain.on('minimize', () => {
+  if (!win) return
   win.minimize()
 })
 
 ipcMain.on('update-check', async () => {
-  const latest = await check_update()
-  win.webContents.send('update-check', latest)
+  try {
+    const latest = await check_update()
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('update-check', latest)
+    }
+  } catch (error) {
+    console.error('[Main] Update check failed:', error)
+  }
 })
 
 // Translations

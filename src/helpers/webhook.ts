@@ -5,7 +5,6 @@ async function post(url: string, body: any) {
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
     },
     body: JSON.stringify(body),
   })

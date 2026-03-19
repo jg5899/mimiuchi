@@ -10,6 +10,7 @@ export interface LanguageStream {
 }
 
 export interface TranslationLog {
+  id: number
   transcript: string
   translations: { [langCode: string]: string }
   isFinal: boolean
@@ -117,6 +118,7 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
   // Multi-language translation logs
   const multiLogs = ref<TranslationLog[]>([])
   const translationsServed = ref(0)
+  let nextLogId = 0
 
   // Get enabled language streams
   const enabledStreams = computed(() => {
@@ -128,11 +130,13 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
     return enabledStreams.value.map(stream => stream.targetLang)
   })
 
-  // Add a new translation log
-  function addTranslationLog(transcript: string, isFinal: boolean = false) {
+  // Add a new translation log — returns a stable ID (not array index)
+  function addTranslationLog(transcript: string, isFinal: boolean = false): number {
     const MAX_LOGS = 100
+    const logId = nextLogId++
 
     const log: TranslationLog = {
+      id: logId,
       transcript,
       translations: {},
       isFinal,
@@ -147,24 +151,19 @@ export const useMultiTranslationStore = defineStore('multi_translation', () => {
       console.log('[MultiTranslation] Trimmed multiLogs array, removed', itemsToRemove, 'old entries')
     }
 
-    return multiLogs.value.length - 1
+    return logId
   }
 
-  // Update translation for a specific language in a log
-  function updateTranslation(logIndex: number, langCode: string, translation: string) {
-    console.log('[MultiTranslation] updateTranslation called:', {
-      logIndex,
-      langCode,
-      translation: translation.substring(0, 50),
-      logExists: !!multiLogs.value[logIndex],
-    })
+  // Update translation for a specific language in a log (looks up by stable ID)
+  function updateTranslation(logId: number, langCode: string, translation: string) {
+    const log = multiLogs.value.find(l => l.id === logId)
 
-    if (multiLogs.value[logIndex]) {
-      multiLogs.value[logIndex].translations[langCode] = translation
+    if (log) {
+      log.translations[langCode] = translation
       translationsServed.value++
-      console.log('[MultiTranslation] Translation updated. Log now has:', Object.keys(multiLogs.value[logIndex].translations))
+      console.log('[MultiTranslation] Translation updated for log', logId, 'lang:', langCode)
     } else {
-      console.error('[MultiTranslation] Log at index', logIndex, 'does not exist!')
+      console.warn('[MultiTranslation] Log ID', logId, 'not found (likely trimmed)')
     }
   }
 

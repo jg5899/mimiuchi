@@ -32,7 +32,7 @@
             <v-card-title class="d-flex align-center justify-space-between">
               {{ stream.name }}
               <v-switch
-                v-model="stream.enabled"
+                :model-value="stream.enabled"
                 color="primary"
                 hide-details
                 inset

@@ -66,9 +66,8 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     }
     return ipcRenderer.invoke(channel, ...omit)
   },
-  removeListener(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.removeAllListeners(channel)
+  removeListener(channel: string, listener: (...args: any[]) => void) {
+    return ipcRenderer.removeListener(channel, listener)
   },
 })
 

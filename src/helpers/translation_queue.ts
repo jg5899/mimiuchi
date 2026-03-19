@@ -30,18 +30,23 @@ class TranslationQueue {
   private queue: QueuedTask[] = []
   private activeTaskIds: Map<string, ReturnType<typeof setTimeout>> = new Map() // Track active tasks with timeouts
 
+  private initialized = false
+
   constructor() {
-    if (is_electron()) {
-      // Set up listener for translation results
-      window.ipcRenderer?.on('transformers-translate-render-multi', (event: any, data: any) => {
-        this.handleTranslationResult(data)
-      })
-    }
+    // IPC listener deferred to initialize() to ensure stores are ready
   }
 
   initialize(translationStore: any, multiTranslationStore: any) {
     this.translationStore = translationStore
     this.multiTranslationStore = multiTranslationStore
+
+    // Register IPC listener only once, after stores are available
+    if (!this.initialized && is_electron()) {
+      window.ipcRenderer?.on('transformers-translate-render-multi', (event: any, data: any) => {
+        this.handleTranslationResult(data)
+      })
+      this.initialized = true
+    }
   }
 
   // Debug logging helper - only logs if DEBUG is enabled
@@ -182,21 +187,23 @@ class TranslationQueue {
       hasStore: !!this.multiTranslationStore,
     })
 
-    // Clear timeout for this task
+    // Clear timeout for this task — only decrement if the task was still active
+    // (prevents double-decrement when timeout fires AND worker returns a result)
     const taskId = this.getTaskId(data.index, data.tgt_lang)
     const timeoutId = this.activeTaskIds.get(taskId)
     if (timeoutId) {
       clearTimeout(timeoutId)
       this.activeTaskIds.delete(taskId)
-    }
 
-    // Decrement active tasks count when translation completes (success or error)
-    if (data.status === 'complete' || data.status === 'error') {
-      this.activeTasks--
-      this.log(`Task completed. Active: ${this.activeTasks}/${QUEUE_CONFIG.MAX_CONCURRENT}, Queue: ${this.queue.length}`)
-
-      // Process next items in queue
-      this.processQueue()
+      // Only decrement if this task was still tracked (not already timed out)
+      if (data.status === 'complete' || data.status === 'error') {
+        this.activeTasks = Math.max(0, this.activeTasks - 1)
+        this.log(`Task completed. Active: ${this.activeTasks}/${QUEUE_CONFIG.MAX_CONCURRENT}, Queue: ${this.queue.length}`)
+        this.processQueue()
+      }
+    } else {
+      // Task already timed out — activeTasks was already decremented by the timeout handler
+      this.log(`Task ${taskId} result arrived after timeout, skipping decrement`)
     }
 
     if (data.status === 'complete' && this.multiTranslationStore) {
@@ -212,9 +219,9 @@ class TranslationQueue {
 
       // CRITICAL: Broadcast the translation to HTTP server display clients
       if (is_electron()) {
-        // Bounds check to prevent accessing undefined after array trim
-        if (data.index < this.multiTranslationStore.multiLogs.length) {
-          const log = this.multiTranslationStore.multiLogs[data.index]
+        // Look up log by stable ID (not array index) to handle trimmed arrays
+        {
+          const log = this.multiTranslationStore.multiLogs.find((l: any) => l.id === data.index)
           if (log) {
             const stream = this.multiTranslationStore.languageStreams.find(
               (s: any) => s.targetLang === data.tgt_lang && s.enabled
@@ -234,8 +241,6 @@ class TranslationQueue {
               window.ipcRenderer.send('httpserver-broadcast', langMessage)
             }
           }
-        } else {
-          console.warn(`[TranslationQueue] Cannot broadcast - log index ${data.index} out of bounds (array length: ${this.multiTranslationStore.multiLogs.length})`)
         }
       }
     }
