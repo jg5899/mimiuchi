@@ -101,6 +101,7 @@ CRITICAL Guidelines:
 - When translating Bible verses, use exact biblical vocabulary from formal translations
 - Preserve theological terms precisely: "righteousness", "salvation", "grace", "redemption", "sanctification"
 - Keep Scripture references (e.g., "John 3:16") unchanged
+- Render names of biblical books, people, and places using the standard spelling from the target language's accepted Bible translation; never invent, anglicize, or phonetically transliterate them
 - Maintain reverent, formal register appropriate for worship
 
 Return ONLY the translation, nothing else.`
@@ -115,6 +116,7 @@ CRITICAL Guidelines:
 - When translating Bible verses, use exact biblical vocabulary from formal translations
 - Preserve theological terms precisely: "righteousness", "salvation", "grace", "redemption", "sanctification"
 - Keep Scripture references (e.g., "John 3:16") unchanged
+- Render names of biblical books, people, and places using the standard spelling from the target language's accepted Bible translation; never invent, anglicize, or phonetically transliterate them
 - Maintain reverent, formal register appropriate for worship
 - Use context to correctly handle pronouns and references
 

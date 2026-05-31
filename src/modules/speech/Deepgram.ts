@@ -10,8 +10,24 @@ const DEEPGRAM_CONFIG = {
   MAX_RECONNECT_ATTEMPTS: 5,  // Maximum WebSocket reconnection attempts
 } as const
 
-// No keywords - let Nova-3 work naturally for best speed/accuracy
-const BIBLICAL_VOCABULARY: string[] = []
+// Deepgram Nova-3 keyterm prompting: a CONSERVATIVE, curated list of distinctive,
+// frequently-spoken biblical proper nouns + theological terms that general ASR mishears
+// (e.g. "Habakkuk" -> "have a look"). Kept tight (~35) and limited to multi-syllable,
+// distinctive words to minimize Deepgram's known force-fitting/overfitting pathology
+// (which worsens past ~50 terms). Common short names (John, Mark, Paul) are intentionally
+// omitted — Nova-3 already recognizes them and they collide with everyday speech.
+// Per-speaker custom vocabulary is appended to this base list at connect time.
+const BIBLICAL_VOCABULARY: string[] = [
+  // Book / epistle names that are distinctive and commonly misrecognized
+  'Habakkuk', 'Thessalonians', 'Corinthians', 'Ephesians', 'Philippians', 'Colossians',
+  'Galatians', 'Deuteronomy', 'Leviticus', 'Ezekiel', 'Nehemiah', 'Zephaniah', 'Haggai',
+  'Zechariah', 'Malachi', 'Philemon', 'Lamentations', 'Ecclesiastes', 'Obadiah', 'Hosea',
+  // People / places
+  'Pharisees', 'Sadducees', 'Gentiles', 'Messiah', 'Gethsemane', 'Capernaum', 'Nazareth',
+  // Theological terms
+  'righteousness', 'sanctification', 'justification', 'propitiation', 'redemption',
+  'atonement', 'repentance', 'Pentecost',
+]
 
 class Deepgram {
   stream_ref: MediaStream | null = null
