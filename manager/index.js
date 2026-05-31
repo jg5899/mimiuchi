@@ -13,6 +13,10 @@ const INTERNAL_PORT = 9091
 
 // --- State ---
 let config = loadConfig()
+if (!config.pin) {
+  console.warn('[manager] SECURITY WARNING: no admin PIN set in ~/.mimiuchi-manager/config.json — '
+    + 'the dashboard now REFUSES all logins until you set a non-empty "pin".')
+}
 let electronProcess = null
 let electronWs = null
 let latestStats = null
@@ -50,7 +54,9 @@ adminWss.on('connection', (ws) => {
 
     if (!authenticated) {
       if (msg.type === 'auth') {
-        if (!config.pin || msg.pin === config.pin) {
+        // SECURITY: require a non-empty configured PIN and an exact match. Never treat a
+        // blank config.pin as "no auth required" — that previously let any LAN client in.
+        if (config.pin && msg.pin === config.pin) {
           authenticated = true
           clearTimeout(authTimeout)
           adminClients.add(ws)
@@ -128,12 +134,10 @@ function handleCommand(msg) {
         electronWs.send(JSON.stringify(msg))
       }
       break
-    case 'update_config':
-      if (msg.config) {
-        config = { ...config, ...msg.config }
-        saveConfig(config)
-      }
-      break
+    // SECURITY: 'update_config' was removed. It allowed an authenticated client to
+    // rewrite arbitrary config — including electron_path — which combined with
+    // 'start_app' to spawn an attacker-chosen binary (remote code execution). Config
+    // (PIN, electron_path) is now changed only by editing ~/.mimiuchi-manager/config.json.
   }
 }
 
