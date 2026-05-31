@@ -146,6 +146,9 @@ async function createWindow() {
 // Lazy-load translation worker to prevent crashes on startup
 const transformersWorkerPath = `file://${path.join(__dirname, 'worker', 'translation.js')}`
 let transformersWorker: Worker | null = null
+// Cached in main so a worker crash/restart can be re-keyed without depending on the
+// renderer to resend it (otherwise translation silently stops after a worker blip).
+let cachedTranslationApiKey: string | null = null
 
 function getTransformersWorker(): Worker {
   if (!transformersWorker) {
@@ -182,6 +185,13 @@ function getTransformersWorker(): Worker {
       console.log(`[Main Worker] Translation worker exited with code ${code}`)
       transformersWorker = null
     })
+
+    // Re-key the freshly (re)created worker so a crash/restart doesn't silently stop
+    // translation until the renderer happens to resend the key.
+    if (cachedTranslationApiKey) {
+      console.log('[Main Worker] Re-pushing cached translation API key to new worker, length:', cachedTranslationApiKey.length)
+      transformersWorker.postMessage({ type: 'set-api-key', apiKey: cachedTranslationApiKey })
+    }
   }
 
   return transformersWorker
@@ -355,6 +365,7 @@ ipcMain.on('transformers-translate-multi', async (event, args) => {
 
 ipcMain.on('set-translation-api-key', async (event, apiKey) => {
   console.log('[Main IPC] Received set-translation-api-key, length:', apiKey?.length)
+  cachedTranslationApiKey = apiKey || null
   getTransformersWorker().postMessage({ type: 'set-api-key', apiKey })
 })
 
