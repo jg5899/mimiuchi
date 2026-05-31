@@ -155,13 +155,11 @@ class TranslationQueue {
       // Set up timeout to recover from stuck translations
       const timeoutId = setTimeout(() => {
         if (this.activeTaskIds.has(taskId)) {
-          console.error(`[TranslationQueue] Translation timeout for ${tgtLang} (index: ${logIndex})`)
+          console.error(`[TranslationQueue] Translation timeout for ${tgtLang} (index: ${logIndex}) — falling back to original text`)
           this.activeTaskIds.delete(taskId)
           this.activeTasks--
-          // Store error message so user knows translation failed
-          if (this.multiTranslationStore) {
-            this.multiTranslationStore.updateTranslation(logIndex, tgtLang, '[Translation Timeout]')
-          }
+          // Fall back to the original text so the line isn't lost to a timeout token.
+          this.deliverTranslation(logIndex, tgtLang, text)
           this.processQueue() // Continue with next task
         }
       }, QUEUE_CONFIG.TASK_TIMEOUT_MS)
@@ -176,6 +174,34 @@ class TranslationQueue {
         this.processQueue() // Continue processing queue
       }
     }
+  }
+
+  // Deliver a line to the in-app store AND broadcast it to HTTP display clients
+  // (phones/projector). Used for successful translations and for fallbacks (original
+  // text on failure/timeout) so a line is never silently dropped or shown as an error.
+  private deliverTranslation(logIndex: number, tgtLang: string, translation: string) {
+    if (!this.multiTranslationStore) return
+    this.multiTranslationStore.updateTranslation(logIndex, tgtLang, translation)
+
+    if (!is_electron()) return
+    // Look up log by stable ID (not array index) to handle trimmed arrays
+    const log = this.multiTranslationStore.multiLogs.find((l: any) => l.id === logIndex)
+    if (!log) return
+    const stream = this.multiTranslationStore.languageStreams.find(
+      (s: any) => s.targetLang === tgtLang && s.enabled
+    )
+    if (!stream) return
+
+    const langPayload = {
+      transcript: log.transcript,
+      translation,
+      targetLang: tgtLang,
+      languageName: stream.name,
+      isFinal: log.isFinal,
+      time: log.time,
+    }
+    this.log(`Broadcasting for ${stream.name} (${tgtLang}):`, String(translation).substring(0, 50))
+    window.ipcRenderer.send('httpserver-broadcast', `{"type": "text", "data": ${JSON.stringify(langPayload)}}`)
   }
 
   private handleTranslationResult(data: any) {
@@ -207,42 +233,24 @@ class TranslationQueue {
     }
 
     if (data.status === 'complete' && this.multiTranslationStore) {
-      // Validate translation output structure
+      // Validate translation output structure; on malformed output fall back to the
+      // original transcript so a line is never lost to an error token.
       if (!data.output || !Array.isArray(data.output) || data.output.length === 0 || !data.output[0]?.translation_text) {
-        console.error('[TranslationQueue] Translation complete with invalid output:', data.output)
-        this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, '[Translation Error]')
+        console.error('[TranslationQueue] Translation complete with invalid output, falling back to original:', data.output)
+        const log = this.multiTranslationStore.multiLogs.find((l: any) => l.id === data.index)
+        this.deliverTranslation(data.index, data.tgt_lang, log?.transcript || '')
         return
       }
       const translation = data.output[0].translation_text
       this.log(`Updating translation for ${data.tgt_lang}:`, translation.substring(0, 50))
-      this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, translation)
-
-      // CRITICAL: Broadcast the translation to HTTP server display clients
-      if (is_electron()) {
-        // Look up log by stable ID (not array index) to handle trimmed arrays
-        {
-          const log = this.multiTranslationStore.multiLogs.find((l: any) => l.id === data.index)
-          if (log) {
-            const stream = this.multiTranslationStore.languageStreams.find(
-              (s: any) => s.targetLang === data.tgt_lang && s.enabled
-            )
-
-            if (stream) {
-              const langPayload = {
-                transcript: log.transcript,
-                translation: translation,
-                targetLang: data.tgt_lang,
-                languageName: stream.name,
-                isFinal: log.isFinal,
-                time: log.time,
-              }
-              const langMessage = `{"type": "text", "data": ${JSON.stringify(langPayload)}}`
-              this.log(`Broadcasting translation for ${stream.name} (${data.tgt_lang}):`, translation.substring(0, 50))
-              window.ipcRenderer.send('httpserver-broadcast', langMessage)
-            }
-          }
-        }
-      }
+      this.deliverTranslation(data.index, data.tgt_lang, translation)
+    } else if (data.status === 'error' && this.multiTranslationStore) {
+      // Translation failed after the worker's retries — fall back to the original
+      // transcript so the congregation still sees the line (in English) instead of
+      // nothing or an "[Translation Error]" token.
+      console.warn(`[TranslationQueue] Translation error for ${data.tgt_lang} (index ${data.index}): ${data.error}. Falling back to original text.`)
+      const log = this.multiTranslationStore.multiLogs.find((l: any) => l.id === data.index)
+      this.deliverTranslation(data.index, data.tgt_lang, log?.transcript || '')
     }
   }
 

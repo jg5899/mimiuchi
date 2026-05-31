@@ -38,6 +38,14 @@ const languageMap: Record<string, string> = {
 
 let apiKey: string = ''
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+// Exponential backoff: 400ms, 800ms, 1600ms, ...
+function backoffMs(attempt: number) {
+  return 400 * Math.pow(2, attempt - 1)
+}
+
 parentPort?.on('message', async (message) => {
   if (message.type === 'set-api-key') {
     apiKey = message.apiKey
@@ -113,39 +121,61 @@ CRITICAL Guidelines:
 Return ONLY the translation, nothing else.`
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: systemContent,
-        },
-        {
-          role: 'user',
-          content: data.text,
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 500,
-    }),
+  const requestBody = JSON.stringify({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: systemContent },
+      { role: 'user', content: data.text },
+    ],
+    temperature: 0.2,
+    max_tokens: 500,
   })
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error?.message || 'OpenAI translation failed')
-  }
+  // Retry transient failures (429 rate-limit, 5xx, network blips) with backoff so a
+  // single hiccup doesn't drop a sentence. Permanent errors (bad key, other 4xx) fail
+  // fast. On exhaustion we throw; the renderer queue then falls back to the original
+  // text so the congregation never loses a line to an error token.
+  const MAX_ATTEMPTS = 3
+  let translation = ''
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let response: any
+    try {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: requestBody,
+      })
+    } catch (netErr: any) {
+      // Network-level failure (fetch threw) — retryable.
+      if (attempt === MAX_ATTEMPTS) throw new Error(netErr?.message || 'Network error contacting OpenAI')
+      await sleep(backoffMs(attempt))
+      continue
+    }
 
-  const result = await response.json()
-  const translation = result.choices[0]?.message?.content?.trim()
+    if (response.ok) {
+      const result = await response.json()
+      translation = result.choices[0]?.message?.content?.trim() || ''
+      if (!translation) throw new Error('Empty OpenAI translation result')
+      break
+    }
 
-  if (!translation) {
-    throw new Error('Empty OpenAI translation result')
+    // Non-OK HTTP response.
+    const retryable = response.status === 429 || response.status >= 500
+    let errMsg = `OpenAI translation failed (HTTP ${response.status})`
+    try {
+      const e = await response.json()
+      errMsg = e.error?.message || errMsg
+    } catch { /* non-JSON error body */ }
+
+    if (!retryable || attempt === MAX_ATTEMPTS) throw new Error(errMsg)
+
+    // Honor Retry-After (seconds) when the API sends it, else exponential backoff.
+    const retryAfter = Number.parseInt(response.headers.get('retry-after') || '', 10)
+    await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : backoffMs(attempt))
+    console.log(`[TranslationWorker] retrying ${data.tgt_lang} (attempt ${attempt + 1}/${MAX_ATTEMPTS}) after HTTP ${response.status}`)
   }
 
   console.log('[TranslationWorker] OpenAI translation complete:', {
