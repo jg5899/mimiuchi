@@ -244,10 +244,19 @@ export const useSpeechStore = defineStore('speech', () => {
       }
     }
 
-    if (defaultStore.speech.value.listening)
+    if (defaultStore.speech.value.listening) {
+      // Auto-enable broadcasting when the mic starts so an operator can't run a live
+      // service that captions nothing to the phones/projector. The operator can still
+      // toggle it off afterward (and is warned if they do — see toggle_broadcast).
+      if (!defaultStore.broadcasting) {
+        const connectionsStore = useConnectionsStore()
+        connectionsStore.toggle_broadcast()
+      }
       defaultStore.speech.value.start()
-    else
+    }
+    else {
       defaultStore.speech.value.stop()
+    }
   }
 
   function submit_text(input_text: string, input_index: number, isFinal: boolean) {

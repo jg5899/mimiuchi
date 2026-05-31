@@ -152,6 +152,12 @@ export const useConnectionsStore = defineStore('connections', () => {
     defaultStore.broadcasting = !defaultStore.broadcasting // Broadcast toggle
 
     if (!defaultStore.broadcasting) { // Broadcast stop
+      // Warn loudly if the mic is live — turning broadcasting off mid-service means the
+      // phones and projector silently stop receiving captions.
+      if (defaultStore.speech.value?.listening) {
+        defaultStore.show_snackbar('warning', 'Broadcasting OFF — phones & projector are no longer receiving captions.')
+      }
+
       // Close user-defined connections
       for (let i = 0; i < open.user_websockets.length; i++) {
         disconnect_user_websocket(i)
