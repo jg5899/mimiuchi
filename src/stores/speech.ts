@@ -156,8 +156,27 @@ export const useSpeechStore = defineStore('speech', () => {
           defaultStore.speech.value.listening = false
           defaultStore.speech.value.stop()
           break
+        case 'no-api-key':
+          // Deepgram-specific: missing/invalid key — terminal config error.
+          desc = 'Deepgram API key missing or invalid — check Settings → Speech-to-Text.'
+          defaultStore.speech.value.listening = false
+          defaultStore.speech.value.stop()
+          break
         case 'audio-capture':
-          desc = i18n.t('snackbar.speech_recognition_error_event.network')
+          // Deepgram-specific: getUserMedia failed (mic permission / device).
+          desc = 'Microphone unavailable — check mic permissions and the selected input device.'
+          defaultStore.speech.value.listening = false
+          defaultStore.speech.value.stop()
+          break
+        case 'websocket':
+          // Deepgram-specific: transient WebSocket error. Do NOT stop() or clear
+          // `listening` here — the socket's onclose handler auto-reconnects with
+          // exponential backoff, and stopping would disable that recovery. Just warn.
+          defaultStore.show_snackbar('warning', 'Deepgram connection hiccup — reconnecting…')
+          return
+        case 'max-reconnect':
+          // Deepgram-specific: reconnection gave up after repeated failures — terminal.
+          desc = 'Lost connection to Deepgram after several retries — check the internet, then toggle the mic to restart captions.'
           defaultStore.speech.value.listening = false
           defaultStore.speech.value.stop()
           break

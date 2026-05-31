@@ -136,6 +136,11 @@ class Deepgram {
 
     this.socket.onopen = () => {
       console.log('Deepgram WebSocket connected')
+      // A successful (re)connection means recovery worked — clear the consecutive
+      // reconnect counter. Without this, unrelated network blips spread across a long
+      // service accumulate toward MAX_RECONNECT_ATTEMPTS and permanently kill captions
+      // mid-sermon even though each individual blip recovered.
+      this.reconnectAttempts = 0
       this.startAudioStream()
     }
 
