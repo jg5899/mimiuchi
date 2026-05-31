@@ -94,13 +94,12 @@ const window_config: any = {
   trafficLightPosition: { x: 10, y: 10 },
   webPreferences: {
     preload,
-    // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
-    // nodeIntegration: true,
-
-    // Consider using contextBridge.exposeInMainWorld
-    // Read more on https://www.electronjs.org/docs/latest/tutorial/context-isolation
-    // contextIsolation: false,
-    nodeIntegration: true,
+    // Security: the renderer renders externally-influenced text (sermon transcripts +
+    // translations) and is reachable through the public Cloudflare tunnel, so it must
+    // NOT have Node access. contextIsolation is on and ALL IPC goes through the
+    // contextBridge-exposed window.ipcRenderer in the preload, so nodeIntegration is
+    // unnecessary. https://www.electronjs.org/docs/latest/tutorial/context-isolation
+    nodeIntegration: false,
     contextIsolation: true,
   },
 }
