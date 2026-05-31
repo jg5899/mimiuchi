@@ -212,7 +212,11 @@ function broadcastToAdmins(msg) {
 }
 
 // --- Start ---
-httpServer.listen(ADMIN_PORT, '0.0.0.0', () => {
+// SECURITY: bind the admin dashboard + admin WebSocket to loopback only. The operator
+// uses it on the host Mac, never from other LAN devices, so there is no reason to expose
+// the control surface (start/stop app, mic, tunnel) to the church/guest network. This is
+// defense-in-depth on top of the PIN. Reach it via http://localhost:9090/admin.
+httpServer.listen(ADMIN_PORT, '127.0.0.1', () => {
   console.log('[manager] Admin dashboard: http://localhost:' + ADMIN_PORT + '/admin')
   console.log('[manager] Internal WebSocket: ws://127.0.0.1:' + INTERNAL_PORT)
   if (!config.pin) {
