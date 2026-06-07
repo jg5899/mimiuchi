@@ -86,17 +86,25 @@ class Deepgram {
     this.reconnectAttempts = 0
 
     try {
-      // Get microphone stream. Use the explicitly-selected input device when set;
-      // otherwise the OS default (which in AV booths may be a silent virtual device).
+      // Get microphone stream. Prefer the explicitly-selected device, but NEVER let a
+      // stale/invalid device id kill capture: if the exact-device request fails, fall
+      // back to the OS default so STT keeps working.
       if (!this.stream_ref) {
-        const audioConstraints: MediaTrackConstraints = {
-          channelCount: 1,
-          sampleRate: 16000,
+        const base: MediaTrackConstraints = { channelCount: 1, sampleRate: 16000 }
+        if (this.inputDeviceId) {
+          try {
+            this.stream_ref = await navigator.mediaDevices.getUserMedia({
+              audio: { ...base, deviceId: { exact: this.inputDeviceId } },
+            })
+          }
+          catch (devErr) {
+            console.warn('[Deepgram] selected input device unavailable, falling back to default mic:', devErr)
+            this.stream_ref = await navigator.mediaDevices.getUserMedia({ audio: base })
+          }
         }
-        if (this.inputDeviceId)
-          audioConstraints.deviceId = { exact: this.inputDeviceId }
-
-        this.stream_ref = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
+        else {
+          this.stream_ref = await navigator.mediaDevices.getUserMedia({ audio: base })
+        }
       }
 
       // Connect WebSocket (audio streaming starts in onopen callback)
