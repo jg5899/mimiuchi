@@ -38,14 +38,6 @@ const languageMap: Record<string, string> = {
 
 let apiKey: string = ''
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-// Exponential backoff: 400ms, 800ms, 1600ms, ...
-function backoffMs(attempt: number) {
-  return 400 * Math.pow(2, attempt - 1)
-}
-
 parentPort?.on('message', async (message) => {
   if (message.type === 'set-api-key') {
     apiKey = message.apiKey
@@ -101,7 +93,6 @@ CRITICAL Guidelines:
 - When translating Bible verses, use exact biblical vocabulary from formal translations
 - Preserve theological terms precisely: "righteousness", "salvation", "grace", "redemption", "sanctification"
 - Keep Scripture references (e.g., "John 3:16") unchanged
-- Render names of biblical books, people, and places using the standard spelling from the target language's accepted Bible translation; never invent, anglicize, or phonetically transliterate them
 - Maintain reverent, formal register appropriate for worship
 
 Return ONLY the translation, nothing else.`
@@ -116,68 +107,45 @@ CRITICAL Guidelines:
 - When translating Bible verses, use exact biblical vocabulary from formal translations
 - Preserve theological terms precisely: "righteousness", "salvation", "grace", "redemption", "sanctification"
 - Keep Scripture references (e.g., "John 3:16") unchanged
-- Render names of biblical books, people, and places using the standard spelling from the target language's accepted Bible translation; never invent, anglicize, or phonetically transliterate them
 - Maintain reverent, formal register appropriate for worship
 - Use context to correctly handle pronouns and references
 
 Return ONLY the translation, nothing else.`
   }
 
-  const requestBody = JSON.stringify({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemContent },
-      { role: 'user', content: data.text },
-    ],
-    temperature: 0.2,
-    max_tokens: 500,
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: systemContent,
+        },
+        {
+          role: 'user',
+          content: data.text,
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 500,
+    }),
   })
 
-  // Retry transient failures (429 rate-limit, 5xx, network blips) with backoff so a
-  // single hiccup doesn't drop a sentence. Permanent errors (bad key, other 4xx) fail
-  // fast. On exhaustion we throw; the renderer queue then falls back to the original
-  // text so the congregation never loses a line to an error token.
-  const MAX_ATTEMPTS = 3
-  let translation = ''
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    let response: any
-    try {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: requestBody,
-      })
-    } catch (netErr: any) {
-      // Network-level failure (fetch threw) — retryable.
-      if (attempt === MAX_ATTEMPTS) throw new Error(netErr?.message || 'Network error contacting OpenAI')
-      await sleep(backoffMs(attempt))
-      continue
-    }
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error?.message || 'OpenAI translation failed')
+  }
 
-    if (response.ok) {
-      const result = await response.json()
-      translation = result.choices[0]?.message?.content?.trim() || ''
-      if (!translation) throw new Error('Empty OpenAI translation result')
-      break
-    }
+  const result = await response.json()
+  const translation = result.choices[0]?.message?.content?.trim()
 
-    // Non-OK HTTP response.
-    const retryable = response.status === 429 || response.status >= 500
-    let errMsg = `OpenAI translation failed (HTTP ${response.status})`
-    try {
-      const e = await response.json()
-      errMsg = e.error?.message || errMsg
-    } catch { /* non-JSON error body */ }
-
-    if (!retryable || attempt === MAX_ATTEMPTS) throw new Error(errMsg)
-
-    // Honor Retry-After (seconds) when the API sends it, else exponential backoff.
-    const retryAfter = Number.parseInt(response.headers.get('retry-after') || '', 10)
-    await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : backoffMs(attempt))
-    console.log(`[TranslationWorker] retrying ${data.tgt_lang} (attempt ${attempt + 1}/${MAX_ATTEMPTS}) after HTTP ${response.status}`)
+  if (!translation) {
+    throw new Error('Empty OpenAI translation result')
   }
 
   console.log('[TranslationWorker] OpenAI translation complete:', {

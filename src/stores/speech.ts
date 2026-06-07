@@ -6,7 +6,6 @@ import { useLogsStore } from '@/stores/logs'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
-import { useHttpServerStore } from '@/stores/httpserver'
 import { useWordReplaceStore } from '@/stores/word_replace'
 import { useSpeakerProfilesStore } from '@/stores/speaker_profiles'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
@@ -17,10 +16,6 @@ import { Deepgram } from '@/modules/speech'
 import webhook from '@/helpers/webhook'
 
 import { filterProfanity } from '@/helpers/profanity_filter'
-
-// Throttle timestamp for opt-in interim-caption broadcasts (limits WebSocket churn).
-// Module-scoped because there is a single active mic at a time.
-let _lastInterimBroadcast = 0
 
 export interface ListItem {
   title: string
@@ -43,10 +38,6 @@ export const useSpeechStore = defineStore('speech', () => {
     confidence: 0.9,
     sensitivity: 0.0,
     deepgramApiKey: '',
-    // Selected microphone/input device. '' = OS default. IMPORTANT for AV booths where
-    // the OS default may be a virtual device (Loopback/NDI/aggregate) that carries no
-    // speech — the operator must be able to pick the real mic / soundboard feed.
-    inputDeviceId: '',
   }
 
   const stt = ref(structuredClone(stt_init))
@@ -94,7 +85,6 @@ export const useSpeechStore = defineStore('speech', () => {
         language,
         stt.value.deepgramApiKey,
         customKeywords,
-        stt.value.inputDeviceId || '',
       )
 
       console.log('Created Deepgram instance successfully', {
@@ -166,27 +156,8 @@ export const useSpeechStore = defineStore('speech', () => {
           defaultStore.speech.value.listening = false
           defaultStore.speech.value.stop()
           break
-        case 'no-api-key':
-          // Deepgram-specific: missing/invalid key — terminal config error.
-          desc = 'Deepgram API key missing or invalid — check Settings → Speech-to-Text.'
-          defaultStore.speech.value.listening = false
-          defaultStore.speech.value.stop()
-          break
         case 'audio-capture':
-          // Deepgram-specific: getUserMedia failed (mic permission / device).
-          desc = 'Microphone unavailable — check mic permissions and the selected input device.'
-          defaultStore.speech.value.listening = false
-          defaultStore.speech.value.stop()
-          break
-        case 'websocket':
-          // Deepgram-specific: transient WebSocket error. Do NOT stop() or clear
-          // `listening` here — the socket's onclose handler auto-reconnects with
-          // exponential backoff, and stopping would disable that recovery. Just warn.
-          defaultStore.show_snackbar('warning', 'Deepgram connection hiccup — reconnecting…')
-          return
-        case 'max-reconnect':
-          // Deepgram-specific: reconnection gave up after repeated failures — terminal.
-          desc = 'Lost connection to Deepgram after several retries — check the internet, then toggle the mic to restart captions.'
+          desc = i18n.t('snackbar.speech_recognition_error_event.network')
           defaultStore.speech.value.listening = false
           defaultStore.speech.value.stop()
           break
@@ -226,21 +197,6 @@ export const useSpeechStore = defineStore('speech', () => {
       if (!isFinal) {
         // Interim result: update via debounced setter (prevents rapid flickering)
         logsStore.setInterim(transcript)
-
-        // Opt-in (default off): broadcast draft English captions so viewers see text
-        // within ~150ms instead of waiting for the full translation. No targetLang, so
-        // httpserver routes it only to English/"all" display clients (translated viewers
-        // still get their line on the final). Throttled to limit WebSocket churn; the
-        // matching final (isFinal:true) broadcast finalizes the interim on the display.
-        const httpServerStore = useHttpServerStore()
-        if (httpServerStore.interim_captions && defaultStore.broadcasting && is_electron() && transcript?.trim()) {
-          const now = Date.now()
-          if (now - _lastInterimBroadcast >= 150) {
-            _lastInterimBroadcast = now
-            const payload = `{"type": "text", "data": ${JSON.stringify({ transcript, isFinal: false })}}`
-            window.ipcRenderer.send('httpserver-broadcast', payload)
-          }
-        }
         return
       }
 
@@ -269,19 +225,10 @@ export const useSpeechStore = defineStore('speech', () => {
       }
     }
 
-    if (defaultStore.speech.value.listening) {
-      // Auto-enable broadcasting when the mic starts so an operator can't run a live
-      // service that captions nothing to the phones/projector. The operator can still
-      // toggle it off afterward (and is warned if they do — see toggle_broadcast).
-      if (!defaultStore.broadcasting) {
-        const connectionsStore = useConnectionsStore()
-        connectionsStore.toggle_broadcast()
-      }
+    if (defaultStore.speech.value.listening)
       defaultStore.speech.value.start()
-    }
-    else {
+    else
       defaultStore.speech.value.stop()
-    }
   }
 
   function submit_text(input_text: string, input_index: number, isFinal: boolean) {

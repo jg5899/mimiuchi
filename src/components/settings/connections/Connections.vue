@@ -68,25 +68,6 @@
                 hint="Port number (1024-65535)"
               />
             </v-card-text>
-            <!-- Live (interim) captions — opt-in, default off -->
-            <v-card-text>
-              <v-list-item class="px-0">
-                <v-list-item-title>Live (interim) captions</v-list-item-title>
-                <v-list-item-subtitle style="white-space: normal;">
-                  Show draft English captions on the screens/phones as the speaker talks,
-                  updating to the final wording when ready. English view only — translated
-                  views still update when each translation finishes.
-                </v-list-item-subtitle>
-                <template #append>
-                  <v-switch
-                    v-model="httpServerStore.interim_captions"
-                    color="primary"
-                    inset
-                    hide-details
-                  />
-                </template>
-              </v-list-item>
-            </v-card-text>
           </v-card>
         </v-col>
       </v-row>

@@ -54,8 +54,8 @@ adminWss.on('connection', (ws) => {
 
     if (!authenticated) {
       if (msg.type === 'auth') {
-        // SECURITY: require a non-empty configured PIN and an exact match. Never treat a
-        // blank config.pin as "no auth required" — that previously let any LAN client in.
+        // SECURITY: require a non-empty configured PIN and exact match. Never treat a
+        // blank PIN as "no auth" — that let any LAN client in.
         if (config.pin && msg.pin === config.pin) {
           authenticated = true
           clearTimeout(authTimeout)
@@ -134,10 +134,9 @@ function handleCommand(msg) {
         electronWs.send(JSON.stringify(msg))
       }
       break
-    // SECURITY: 'update_config' was removed. It allowed an authenticated client to
-    // rewrite arbitrary config — including electron_path — which combined with
-    // 'start_app' to spawn an attacker-chosen binary (remote code execution). Config
-    // (PIN, electron_path) is now changed only by editing ~/.mimiuchi-manager/config.json.
+    // SECURITY: 'update_config' removed. It allowed an authenticated client to rewrite
+    // arbitrary config including electron_path, which combined with start_app to spawn
+    // an attacker-chosen binary (RCE). Config is changed only by editing config.json.
   }
 }
 
@@ -156,9 +155,25 @@ function startElectron() {
 
   console.log('[manager] Starting Electron: ' + electronPath)
 
+  // Resolve the .app bundle so we can launch it via macOS `open`, which gives the app
+  // its OWN identity for TCC permissions. Launching the inner binary directly with
+  // spawn() makes macOS attribute the microphone request to this manager/node parent,
+  // so the permission prompt never appears and getUserMedia silently returns no audio
+  // (= blank captions). electron_path is .../mimiuchi.app/Contents/MacOS/mimiuchi.
+  const macIdx = electronPath.indexOf('.app/Contents/MacOS/')
+  const appBundle = macIdx !== -1 ? electronPath.slice(0, macIdx + 4) : null
+
   if (existsSync(join(electronPath, 'package.json'))) {
     electronProcess = spawn('npx', ['electron', '.'], {
       cwd: electronPath,
+      stdio: 'pipe',
+      env: { ...process.env, MIMIUCHI_MANAGER_PORT: String(INTERNAL_PORT) }
+    })
+  } else if (process.platform === 'darwin' && appBundle && existsSync(appBundle)) {
+    // `open -n -W -a <bundle>`: -n new instance, -W wait so the 'exit' handler fires
+    // when the app quits. The app then owns its microphone TCC permission.
+    console.log('[manager] Launching app bundle via open (for mic permission): ' + appBundle)
+    electronProcess = spawn('open', ['-n', '-W', '-a', appBundle], {
       stdio: 'pipe',
       env: { ...process.env, MIMIUCHI_MANAGER_PORT: String(INTERNAL_PORT) }
     })
@@ -212,10 +227,8 @@ function broadcastToAdmins(msg) {
 }
 
 // --- Start ---
-// SECURITY: bind the admin dashboard + admin WebSocket to loopback only. The operator
-// uses it on the host Mac, never from other LAN devices, so there is no reason to expose
-// the control surface (start/stop app, mic, tunnel) to the church/guest network. This is
-// defense-in-depth on top of the PIN. Reach it via http://localhost:9090/admin.
+// SECURITY: bind admin dashboard + WS to loopback only (operator uses it on the host
+// Mac). Keeps the control surface off the church/guest LAN; defense-in-depth over PIN.
 httpServer.listen(ADMIN_PORT, '127.0.0.1', () => {
   console.log('[manager] Admin dashboard: http://localhost:' + ADMIN_PORT + '/admin')
   console.log('[manager] Internal WebSocket: ws://127.0.0.1:' + INTERNAL_PORT)

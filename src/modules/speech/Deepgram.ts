@@ -10,10 +10,7 @@ const DEEPGRAM_CONFIG = {
   MAX_RECONNECT_ATTEMPTS: 5,  // Maximum WebSocket reconnection attempts
 } as const
 
-// No keywords - let Nova-3 work naturally for best speed/accuracy.
-// (Reverted: a curated keyterm list was added then rolled back — it was never verified
-// to preserve transcription, and keyterm prompting can suppress transcripts. Revisit
-// only with a real before/after audio test.)
+// No keywords - let Nova-3 work naturally for best speed/accuracy
 const BIBLICAL_VOCABULARY: string[] = []
 
 class Deepgram {
@@ -26,7 +23,6 @@ class Deepgram {
   last_error: string = ''
   try_restart_interval: any = null
   customKeywords: string[] = []
-  inputDeviceId: string = '' // '' = OS default input device
 
   // WebSocket for real-time streaming
   socket: WebSocket | null = null
@@ -43,11 +39,10 @@ class Deepgram {
   onerror: Function = () => {}
   onstart: Function = () => {}
 
-  constructor(lang: string = 'en-US', apiKey: string = '', customKeywords: string[] = [], inputDeviceId: string = '') {
+  constructor(lang: string = 'en-US', apiKey: string = '', customKeywords: string[] = []) {
     this.apiKey = apiKey
     this.language = lang.split('-')[0] // e.g., 'en-US' -> 'en'
     this.customKeywords = customKeywords
-    this.inputDeviceId = inputDeviceId
   }
 
   private cleanupAudioStream() {
@@ -86,25 +81,14 @@ class Deepgram {
     this.reconnectAttempts = 0
 
     try {
-      // Get microphone stream. Prefer the explicitly-selected device, but NEVER let a
-      // stale/invalid device id kill capture: if the exact-device request fails, fall
-      // back to the OS default so STT keeps working.
+      // Get microphone stream
       if (!this.stream_ref) {
-        const base: MediaTrackConstraints = { channelCount: 1, sampleRate: 16000 }
-        if (this.inputDeviceId) {
-          try {
-            this.stream_ref = await navigator.mediaDevices.getUserMedia({
-              audio: { ...base, deviceId: { exact: this.inputDeviceId } },
-            })
-          }
-          catch (devErr) {
-            console.warn('[Deepgram] selected input device unavailable, falling back to default mic:', devErr)
-            this.stream_ref = await navigator.mediaDevices.getUserMedia({ audio: base })
-          }
-        }
-        else {
-          this.stream_ref = await navigator.mediaDevices.getUserMedia({ audio: base })
-        }
+        this.stream_ref = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+          },
+        })
       }
 
       // Connect WebSocket (audio streaming starts in onopen callback)
@@ -152,11 +136,6 @@ class Deepgram {
 
     this.socket.onopen = () => {
       console.log('Deepgram WebSocket connected')
-      // A successful (re)connection means recovery worked — clear the consecutive
-      // reconnect counter. Without this, unrelated network blips spread across a long
-      // service accumulate toward MAX_RECONNECT_ATTEMPTS and permanently kill captions
-      // mid-sermon even though each individual blip recovered.
-      this.reconnectAttempts = 0
       this.startAudioStream()
     }
 

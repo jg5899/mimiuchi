@@ -26,22 +26,11 @@ class CloudflaredManager {
   private tunnelUrl: string | null = null
   private isRunning: boolean = false
   private mode: 'quick' | 'named' = 'quick'
-  // Watchdog state: auto-restart the tunnel if it dies unexpectedly mid-service.
-  private stopping: boolean = false
-  private lastConfig: CloudflaredConfig | null = null
-  private lastError: string | null = null
-  private restartAttempts: number = 0
-  private restartTimer: ReturnType<typeof setTimeout> | null = null
 
   async start(config: CloudflaredConfig): Promise<TunnelStatus> {
     if (this.isRunning) {
       return { running: true, tunnelUrl: this.tunnelUrl, error: null, mode: this.mode }
     }
-
-    // Remember config for the watchdog; clear prior stop/error state for this run.
-    this.lastConfig = config
-    this.stopping = false
-    this.lastError = null
 
     console.log('[Cloudflared] start() called with config:', {
       httpPort: config.httpPort,
@@ -134,7 +123,6 @@ class CloudflaredManager {
 
     this.tunnelUrl = await urlPromise
     this.isRunning = true
-    this.restartAttempts = 0
     this.setupExitHandler()
 
     console.log(`[Cloudflared] Quick tunnel established: ${this.tunnelUrl}`)
@@ -212,7 +200,6 @@ class CloudflaredManager {
     // Use the custom hostname if provided
     this.tunnelUrl = config.customHostname || 'Configured in Cloudflare Dashboard'
     this.isRunning = true
-    this.restartAttempts = 0
     this.setupExitHandler()
 
     console.log(`[Cloudflared] Named tunnel established`)
@@ -220,53 +207,17 @@ class CloudflaredManager {
   }
 
   private setupExitHandler(): void {
-    if (!this.process) return
-    this.process.on('exit', (code) => {
-      console.log(`[Cloudflared] Process exited with code ${code}`)
-      this.isRunning = false
-      this.tunnelUrl = null
-      this.process = null
-      if (!this.stopping) {
-        // Unexpected death mid-service — record it and auto-restart so the public feed
-        // recovers without operator intervention (it previously stayed down silently
-        // while getStatus() still reported no error).
-        this.lastError = `Tunnel process exited unexpectedly (code ${code})`
-        this.scheduleRestart()
-      }
-    })
-  }
-
-  private scheduleRestart(): void {
-    if (this.stopping || !this.lastConfig) return
-    const MAX_RESTARTS = 5
-    if (this.restartAttempts >= MAX_RESTARTS) {
-      this.lastError = `Tunnel died and did not recover after ${MAX_RESTARTS} restart attempts`
-      console.error('[Cloudflared] ' + this.lastError)
-      return
+    if (this.process) {
+      this.process.on('exit', (code) => {
+        console.log(`[Cloudflared] Process exited with code ${code}`)
+        this.isRunning = false
+        this.tunnelUrl = null
+        this.process = null
+      })
     }
-    this.restartAttempts++
-    const delay = Math.min(1000 * Math.pow(2, this.restartAttempts - 1), 30000)
-    console.warn(`[Cloudflared] Tunnel died — auto-restart attempt ${this.restartAttempts}/${MAX_RESTARTS} in ${delay}ms`)
-    this.restartTimer = setTimeout(async () => {
-      this.restartTimer = null
-      if (this.stopping || !this.lastConfig) return
-      const result = await this.start(this.lastConfig)
-      if (!result.running && !this.stopping) {
-        this.lastError = result.error
-        this.scheduleRestart()
-      }
-    }, delay)
   }
 
   async stop(): Promise<void> {
-    // Mark intentional stop so the exit handler doesn't trigger the auto-restart watchdog.
-    this.stopping = true
-    this.restartAttempts = 0
-    if (this.restartTimer) {
-      clearTimeout(this.restartTimer)
-      this.restartTimer = null
-    }
-
     if (!this.process) {
       this.isRunning = false
       this.tunnelUrl = null
@@ -301,7 +252,7 @@ class CloudflaredManager {
     return {
       running: this.isRunning,
       tunnelUrl: this.tunnelUrl,
-      error: this.lastError,
+      error: null,
       mode: this.mode
     }
   }
@@ -324,10 +275,9 @@ class CloudflaredManager {
       }
     }
 
-    // 2. Check PATH using 'which' or 'where'. NOTE: when the app is launched via
-    // launchd/Finder (not a terminal), PATH is the minimal /usr/bin:/bin:/usr/sbin:/sbin
-    // and EXCLUDES Homebrew (/opt/homebrew/bin), so `which` fails even though cloudflared
-    // is installed. We augment PATH and also probe well-known locations below.
+    // 2. Check PATH. When launched via launchd/Finder/`open` (not a terminal), PATH is
+    // the minimal /usr/bin:/bin:/usr/sbin:/sbin and EXCLUDES Homebrew (/opt/homebrew/bin),
+    // so `which` fails even though cloudflared is installed. Augment PATH for the lookup.
     const extraPaths = process.platform === 'win32'
       ? []
       : ['/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin', '/usr/sbin', '/usr/bin', '/bin']
@@ -344,15 +294,10 @@ class CloudflaredManager {
       // fall through to explicit location probing
     }
 
-    // 3. Probe well-known absolute install locations (covers launchd/Finder launches
-    // where Homebrew's bin isn't on PATH).
+    // 3. Probe well-known absolute install locations (covers launchd/open launches).
     const candidates = process.platform === 'win32'
       ? []
-      : [
-          '/opt/homebrew/bin/cloudflared', // Apple Silicon Homebrew
-          '/usr/local/bin/cloudflared',    // Intel Homebrew / manual install
-          '/opt/homebrew/sbin/cloudflared',
-        ]
+      : ['/opt/homebrew/bin/cloudflared', '/usr/local/bin/cloudflared', '/opt/homebrew/sbin/cloudflared']
     for (const candidate of candidates) {
       if (fs.existsSync(candidate)) {
         console.log(`[Cloudflared] Found binary at well-known location ${candidate}`)

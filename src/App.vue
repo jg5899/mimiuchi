@@ -77,25 +77,15 @@ multiTranslationStore.$subscribe((_, state) => {
 })
 
 // CRITICAL: Load stores from localStorage FIRST, before using them
-// Guard each hydration: a single corrupt/invalid localStorage key must not throw and
-// abort the whole startup (which would leave the app blank). On failure, that store
-// keeps its defaults and we log it, rather than taking the entire app down.
-const hydrate = (store: any, key: string) => {
-  try {
-    store.$patch(JSON.parse(localStorage.getItem(key) || '{}'))
-  } catch (e) {
-    console.error(`[App] Failed to hydrate '${key}' from localStorage; using defaults.`, e)
-  }
-}
-hydrate(appearanceStore, 'appearance')
-hydrate(speechStore, 'speech')
-hydrate(settingsStore, 'settings')
-hydrate(wordReplaceStore, 'word_replace')
-hydrate(translationStore, 'translation')
-hydrate(connectionsStore, 'connections')
-hydrate(httpServerStore, 'httpserver')
-hydrate(speakerProfilesStore, 'speaker_profiles')
-hydrate(multiTranslationStore, 'multi_translation')
+appearanceStore.$patch(JSON.parse(localStorage.getItem('appearance') || '{}'))
+speechStore.$patch(JSON.parse(localStorage.getItem('speech') || '{}'))
+settingsStore.$patch(JSON.parse(localStorage.getItem('settings') || '{}'))
+wordReplaceStore.$patch(JSON.parse(localStorage.getItem('word_replace') || '{}'))
+translationStore.$patch(JSON.parse(localStorage.getItem('translation') || '{}'))
+connectionsStore.$patch(JSON.parse(localStorage.getItem('connections') || '{}'))
+httpServerStore.$patch(JSON.parse(localStorage.getItem('httpserver') || '{}'))
+speakerProfilesStore.$patch(JSON.parse(localStorage.getItem('speaker_profiles') || '{}'))
+multiTranslationStore.$patch(JSON.parse(localStorage.getItem('multi_translation') || '{}'))
 
 // Seed settings: on first launch, load pre-configured keys from seed file
 // Created by install.sh — only applies if localStorage has no keys yet
