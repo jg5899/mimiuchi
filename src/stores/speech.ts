@@ -43,6 +43,10 @@ export const useSpeechStore = defineStore('speech', () => {
     confidence: 0.9,
     sensitivity: 0.0,
     deepgramApiKey: '',
+    // Selected microphone/input device. '' = OS default. IMPORTANT for AV booths where
+    // the OS default may be a virtual device (Loopback/NDI/aggregate) that carries no
+    // speech — the operator must be able to pick the real mic / soundboard feed.
+    inputDeviceId: '',
   }
 
   const stt = ref(structuredClone(stt_init))
@@ -90,6 +94,7 @@ export const useSpeechStore = defineStore('speech', () => {
         language,
         stt.value.deepgramApiKey,
         customKeywords,
+        stt.value.inputDeviceId || '',
       )
 
       console.log('Created Deepgram instance successfully', {

@@ -39,6 +39,7 @@ class Deepgram {
   last_error: string = ''
   try_restart_interval: any = null
   customKeywords: string[] = []
+  inputDeviceId: string = '' // '' = OS default input device
 
   // WebSocket for real-time streaming
   socket: WebSocket | null = null
@@ -55,10 +56,11 @@ class Deepgram {
   onerror: Function = () => {}
   onstart: Function = () => {}
 
-  constructor(lang: string = 'en-US', apiKey: string = '', customKeywords: string[] = []) {
+  constructor(lang: string = 'en-US', apiKey: string = '', customKeywords: string[] = [], inputDeviceId: string = '') {
     this.apiKey = apiKey
     this.language = lang.split('-')[0] // e.g., 'en-US' -> 'en'
     this.customKeywords = customKeywords
+    this.inputDeviceId = inputDeviceId
   }
 
   private cleanupAudioStream() {
@@ -97,14 +99,17 @@ class Deepgram {
     this.reconnectAttempts = 0
 
     try {
-      // Get microphone stream
+      // Get microphone stream. Use the explicitly-selected input device when set;
+      // otherwise the OS default (which in AV booths may be a silent virtual device).
       if (!this.stream_ref) {
-        this.stream_ref = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            sampleRate: 16000,
-          },
-        })
+        const audioConstraints: MediaTrackConstraints = {
+          channelCount: 1,
+          sampleRate: 16000,
+        }
+        if (this.inputDeviceId)
+          audioConstraints.deviceId = { exact: this.inputDeviceId }
+
+        this.stream_ref = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
       }
 
       // Connect WebSocket (audio streaming starts in onopen callback)

@@ -17,6 +17,23 @@
           />
         </v-col>
         <v-col :cols="12">
+          <v-select
+            v-model="speechStore.stt.inputDeviceId"
+            :items="micItems"
+            item-title="label"
+            item-value="deviceId"
+            label="Microphone / input device"
+            variant="outlined"
+            persistent-hint
+            hint="Pick the actual mic or soundboard feed. Avoid virtual devices (Loopback, NDI, Aggregate) — they often carry no speech, which produces blank captions."
+            prepend-inner-icon="mdi-microphone"
+          >
+            <template #append>
+              <v-btn variant="text" icon="mdi-refresh" size="small" aria-label="Refresh device list" @click="loadMics" />
+            </template>
+          </v-select>
+        </v-col>
+        <v-col :cols="12">
           <v-alert type="success" variant="tonal" density="compact">
             <div class="text-caption">
               <strong>Deepgram Nova-3</strong><br><br>
@@ -121,6 +138,27 @@ const languages = sttLanguages
 const language_choice = ref('')
 const search_lang = ref('')
 
+// Microphone / input device picker. '' = System Default.
+const micItems = ref<{ deviceId: string, label: string }[]>([{ deviceId: '', label: 'System Default' }])
+
+async function loadMics() {
+  try {
+    // A getUserMedia call is required before device labels are exposed by the browser.
+    try {
+      const probe = await navigator.mediaDevices.getUserMedia({ audio: true })
+      probe.getTracks().forEach(t => t.stop())
+    } catch { /* labels may stay hidden if denied; still list device ids */ }
+
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const inputs = devices
+      .filter(d => d.kind === 'audioinput')
+      .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Microphone ${i + 1}` }))
+    micItems.value = [{ deviceId: '', label: 'System Default' }, ...inputs]
+  } catch (e) {
+    console.error('[STT] Failed to enumerate audio input devices', e)
+  }
+}
+
 const filtered_lang = computed(() => {
   return languages.filter(lang => `${lang.title} ${lang.value}`.toLocaleLowerCase().includes(search_lang.value.toLocaleLowerCase()))
 })
@@ -134,11 +172,18 @@ watch(() => speechStore.stt.deepgramApiKey, () => {
   speechStore.initialize_speech(speechStore.stt.language)
 })
 
+// Re-create the Deepgram instance when the selected input device changes so the new
+// device is picked up (the device is read at construction time in getUserMedia).
+watch(() => speechStore.stt.inputDeviceId, () => {
+  speechStore.initialize_speech(speechStore.stt.language)
+})
+
 onMounted(() => {
   languages.forEach((language) => {
     if (language.value === speechStore.stt.language)
       language_choice.value = language.value
   })
+  loadMics()
 })
 
 function pin_language(selected_language: ListItem) {
