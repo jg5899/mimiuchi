@@ -324,18 +324,45 @@ class CloudflaredManager {
       }
     }
 
-    // 2. Check PATH using 'which' or 'where'
+    // 2. Check PATH using 'which' or 'where'. NOTE: when the app is launched via
+    // launchd/Finder (not a terminal), PATH is the minimal /usr/bin:/bin:/usr/sbin:/sbin
+    // and EXCLUDES Homebrew (/opt/homebrew/bin), so `which` fails even though cloudflared
+    // is installed. We augment PATH and also probe well-known locations below.
+    const extraPaths = process.platform === 'win32'
+      ? []
+      : ['/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin', '/usr/sbin', '/usr/bin', '/bin']
     try {
       const command = process.platform === 'win32' ? `where ${binaryName}` : `which ${binaryName}`
-      const { stdout } = await execAsync(command)
+      const augmentedPath = [process.env.PATH, ...extraPaths].filter(Boolean).join(path.delimiter)
+      const { stdout } = await execAsync(command, { env: { ...process.env, PATH: augmentedPath } })
       const binaryPath = stdout.trim().split('\n')[0]
-      console.log(`[Cloudflared] Found binary in PATH at ${binaryPath}`)
-      return binaryPath
+      if (binaryPath) {
+        console.log(`[Cloudflared] Found binary in PATH at ${binaryPath}`)
+        return binaryPath
+      }
     } catch {
-      throw new Error(
-        'cloudflared not found. Please install it from https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/'
-      )
+      // fall through to explicit location probing
     }
+
+    // 3. Probe well-known absolute install locations (covers launchd/Finder launches
+    // where Homebrew's bin isn't on PATH).
+    const candidates = process.platform === 'win32'
+      ? []
+      : [
+          '/opt/homebrew/bin/cloudflared', // Apple Silicon Homebrew
+          '/usr/local/bin/cloudflared',    // Intel Homebrew / manual install
+          '/opt/homebrew/sbin/cloudflared',
+        ]
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        console.log(`[Cloudflared] Found binary at well-known location ${candidate}`)
+        return candidate
+      }
+    }
+
+    throw new Error(
+      'cloudflared not found. Please install it from https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/'
+    )
   }
 }
 
