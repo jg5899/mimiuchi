@@ -722,6 +722,24 @@
                     });
                 });
             }
+            // Tail updated in place (interim grew, or interim finalized) without changing
+            // length — reconcile the last rendered segment so interim text updates live and the
+            // final replaces it. (Append-only render alone never repaints existing nodes, which
+            // would otherwise freeze each line at its first interim fragment.)
+            else if (validTranscriptions.length === lastRenderedCount && validTranscriptions.length > 0) {
+                const log = validTranscriptions[validTranscriptions.length - 1];
+                const spans = list.querySelectorAll('.transcription-segment');
+                const lastSpan = spans[spans.length - 1];
+                if (lastSpan) {
+                    const text = log.translation || log.transcript;
+                    if (lastSpan.textContent !== text) lastSpan.textContent = text;
+                    const cls = `transcription-segment ${log.isFinal ? 'final' : 'interim'}`;
+                    if (lastSpan.className !== cls) lastSpan.className = cls;
+                    requestAnimationFrame(() => {
+                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    });
+                }
+            }
         }
 
         // Font size controls

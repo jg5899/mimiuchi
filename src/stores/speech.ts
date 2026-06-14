@@ -226,6 +226,7 @@ export const useSpeechStore = defineStore('speech', () => {
       // ALWAYS resets the timer — including for the empty/silence finals handled just below —
       // so sermon pauses can't strand the timer and inflate the next phrase's hold.
       latPhraseFinal(transcript)
+      _lastInterimBroadcast = 0 // let the next phrase's first interim broadcast immediately
 
       // Final result: only process if there's actual text
       // Don't clear interim for empty finals (silence) - keep showing last text
