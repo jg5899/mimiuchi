@@ -179,6 +179,64 @@
         body.dark .tts-notice { color: #ffcc66; }
         body.light .tts-notice { color: #b26a00; }
 
+        .tts-help-link {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-decoration: underline;
+            padding: 0;
+            opacity: 0.85;
+        }
+        body.dark .tts-help-link { color: #8ab4ff; }
+        body.light .tts-help-link { color: #1a5fb4; }
+
+        .tts-help-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .tts-help-overlay[hidden] { display: none; }
+
+        .tts-help-box {
+            position: relative;
+            max-width: 540px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 12px;
+            padding: 1.5rem 1.5rem 1.25rem;
+            line-height: 1.5;
+        }
+        body.dark .tts-help-box { background: #2a2a2a; color: #e0e0e0; }
+        body.light .tts-help-box { background: #ffffff; color: #333333; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
+        .tts-help-box h2 { font-size: 1.2rem; margin-bottom: 0.75rem; }
+        .tts-help-box p { margin-bottom: 0.75rem; }
+        .tts-help-box ul { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.75rem; }
+        .tts-help-box li { padding: 0.6rem 0.75rem; border-radius: 8px; }
+        body.dark .tts-help-box li { background: #1f1f1f; }
+        body.light .tts-help-box li { background: #f3f3f3; }
+        .tts-help-box li.tts-help-current { outline: 2px solid #4caf50; }
+        .tts-help-tip { font-style: italic; opacity: 0.85; margin-bottom: 0 !important; }
+        .tts-help-close {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            background: none;
+            border: none;
+            font-size: 1.6rem;
+            line-height: 1;
+            cursor: pointer;
+            color: inherit;
+            opacity: 0.7;
+        }
+        .tts-help-close:hover { opacity: 1; }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -301,6 +359,22 @@
             </select>
         </label>
         <span class="tts-notice" id="ttsNotice" hidden></span>
+        <button type="button" class="tts-help-link" id="ttsHelpLink">How to enable a voice</button>
+    </div>
+
+    <div class="tts-help-overlay" id="ttsHelpOverlay" hidden>
+        <div class="tts-help-box" role="dialog" aria-modal="true" aria-label="How to enable a voice">
+            <button type="button" class="tts-help-close" id="ttsHelpClose" aria-label="Close">&times;</button>
+            <h2>Enable a voice for spoken captions</h2>
+            <p>Spoken audio uses a voice installed on <em>your own device</em>. Install your language once, then tap 🔊 Speak again:</p>
+            <ul>
+                <li data-platform="ios"><strong>iPhone / iPad:</strong> Settings → Accessibility → Spoken Content → Voices → choose your language → download. Then use Safari.</li>
+                <li data-platform="android"><strong>Android:</strong> Settings → Accessibility → Text-to-speech output → Google Text-to-speech → Install voice data → your language. Then use Chrome.</li>
+                <li data-platform="windows"><strong>Windows:</strong> Settings → Time &amp; Language → Language &amp; region → add your language → Language options → download Speech. Microsoft Edge also includes online voices.</li>
+                <li data-platform="mac"><strong>Mac:</strong> System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → your language → download.</li>
+            </ul>
+            <p class="tts-help-tip">If your language still isn't listed after installing, your device may not offer it — captions will still show.</p>
+        </div>
     </div>
 
     <div class="container">
@@ -699,6 +773,9 @@
         const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
         const ttsRateSelect = document.getElementById('ttsRateSelect');
         const ttsNotice = document.getElementById('ttsNotice');
+        const ttsHelpLink = document.getElementById('ttsHelpLink');
+        const ttsHelpOverlay = document.getElementById('ttsHelpOverlay');
+        const ttsHelpClose = document.getElementById('ttsHelpClose');
 
         function bcp47Prefix(lang) { return (lang || '').toLowerCase().split('-')[0]; }
         function matchingVoices() { return voices.filter(v => bcp47Prefix(v.lang) === ttsLangPrefix); }
@@ -862,6 +939,25 @@
             }
         }
 
+        // ---- "How to enable a voice" help ----
+        function detectPlatform() {
+            const ua = navigator.userAgent || '';
+            if (/iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+            if (/Android/.test(ua)) return 'android';
+            if (/Windows/.test(ua)) return 'windows';
+            if (/Mac/.test(ua)) return 'mac';
+            return null;
+        }
+        function openTtsHelp() {
+            if (!ttsHelpOverlay) return;
+            const plat = detectPlatform();
+            ttsHelpOverlay.querySelectorAll('[data-platform]').forEach(el => {
+                el.classList.toggle('tts-help-current', plat !== null && el.getAttribute('data-platform') === plat);
+            });
+            ttsHelpOverlay.hidden = false;
+        }
+        function closeTtsHelp() { if (ttsHelpOverlay) ttsHelpOverlay.hidden = true; }
+
         // ---- enable / iOS unlock ----
         function primeUnlock() {
             if (ttsUnlocked || !ttsSupported) return;
@@ -923,6 +1019,11 @@
             if (window.speechSynthesis.onvoiceschanged !== undefined) {
                 window.speechSynthesis.onvoiceschanged = loadVoices;
             }
+            if (ttsHelpLink) ttsHelpLink.addEventListener('click', openTtsHelp);
+            if (ttsHelpClose) ttsHelpClose.addEventListener('click', closeTtsHelp);
+            if (ttsHelpOverlay) ttsHelpOverlay.addEventListener('click', (e) => { if (e.target === ttsHelpOverlay) closeTtsHelp(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTtsHelp(); });
+
             window.addEventListener('resize', layoutTtsPanel);
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
