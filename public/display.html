@@ -772,7 +772,7 @@
         const TTS_MODE = 'cap';
         const TTS_MAX_BACKLOG = 2;
 
-        let ttsEnabled = localStorage.getItem('ttsEnabled') === 'true';
+        let ttsEnabled = false; // brand: always start OFF each load (no surprise audio on shared/returning devices)
         let ttsRate = parseFloat(localStorage.getItem('ttsRate') || '1') || 1;
         let ttsVoiceURI = localStorage.getItem('ttsVoiceURI') || '';
         let selectedVoice = null;
@@ -992,7 +992,7 @@
 
         function setTtsEnabled(on) {
             ttsEnabled = on;
-            localStorage.setItem('ttsEnabled', on ? 'true' : 'false');
+            // intentionally NOT persisted — TTS must start OFF on every load
             if (ttsToggle) ttsToggle.textContent = on ? '🔊 Speak' : '🔇 Speak';
             if (ttsPanel) ttsPanel.hidden = !on;
             if (on) {

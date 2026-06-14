@@ -1,14 +1,13 @@
 <template>
-  <v-app-bar color="primary" app flat height="50">
+  <v-app-bar color="surface" app flat height="50">
     <v-app-bar-nav-icon
       variant="text"
       @click.stop="settingsStore.drawer = !settingsStore.drawer"
     />
     <v-container class="mb-7 fill-height d-flex align-center">
-      <v-icon
-        class="me-6 ms-4 d-none d-sm-flex"
-        icon="mdi-weather-night"
-      />
+      <div class="logo-plaque me-5 ms-4 d-none d-sm-flex">
+        <img src="/trinity-logo.png" alt="Trinity Community Church" />
+      </div>
       <v-app-bar-title class="font-weight-medium">
         {{ APP_NAME }}
       </v-app-bar-title>
@@ -50,3 +49,13 @@ function open_external(link: string) {
   window.open(link, '_blank')
 }
 </script>
+
+<style scoped>
+.logo-plaque {
+  background: #fff;
+  border-radius: 8px;
+  padding: 3px 6px;
+  align-items: center;
+}
+.logo-plaque img { height: 26px; display: block; }
+</style>

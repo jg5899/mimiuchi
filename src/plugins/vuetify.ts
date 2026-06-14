@@ -14,14 +14,18 @@ import { gold_light } from '@/plugins/themes/gold_light'
 import { gold_dark } from '@/plugins/themes/gold_dark'
 import { forest_light } from '@/plugins/themes/forest_light'
 import { forest_dark } from '@/plugins/themes/forest_dark'
+import { pneumascribe_dark } from '@/plugins/themes/pneumascribe_dark'
+import { pneumascribe_light } from '@/plugins/themes/pneumascribe_light'
 
 // additional components
 import { VIconBtn } from 'vuetify/labs/VIconBtn'
 
 export default createVuetify({
   theme: {
-    defaultTheme: 'midnight_purple',
+    defaultTheme: 'pneumascribe_dark',
     themes: {
+      pneumascribe_dark,
+      pneumascribe_light,
       cotton_candy,
       midnight_purple,
       red_light,

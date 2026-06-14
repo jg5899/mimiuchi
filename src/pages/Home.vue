@@ -159,7 +159,7 @@ onMounted(() => {
   if (appearanceStore.current_theme in theme.themes.value)
     theme.global.name.value = appearanceStore.current_theme // Set the theme from the user's settings.
   else
-    theme.global.name.value = 'midnight_purple'
+    theme.global.name.value = 'pneumascribe_dark'
 
   overlay_main.value = settingsStore.welcome
   onResize()

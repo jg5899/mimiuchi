@@ -28,7 +28,7 @@ export default defineConfig(({ command }) => {
   return {
     base: './',
     define: {
-      __APP_NAME__: JSON.stringify('mimiuchi'),
+      __APP_NAME__: JSON.stringify('PneumaScribe'),
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
     },
     plugins: [
