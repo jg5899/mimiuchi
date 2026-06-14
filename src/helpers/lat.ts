@@ -1,12 +1,12 @@
 // Lightweight, opt-in latency instrumentation for the caption pipeline.
 //
 // INERT by default. Enable at runtime (no rebuild) with:
-//   localStorage.setItem('lat_debug', '1')   // then reload / restart capture
-// Disable with:
-//   localStorage.removeItem('lat_debug')
+//   localStorage.setItem('lat_debug', '1')   // then speak; disable with removeItem('lat_debug')
 //
-// Emits single-line `[LAT] <stage> {json}` console logs that scripts/analyze_latency.cjs
-// parses. When off, every call is a cheap boolean check and a return — zero behavior change.
+// Emits `[LAT] <stage> {json}` to the console AND appends to window.__latBuf (a capped ring
+// buffer) so a whole session can be read in one CDP call:  copy(window.__latBuf.join('\n'))
+// then feed it to scripts/analyze_latency.cjs. When off, every entry point early-returns —
+// no Date.now, no writes, no buffer growth.
 
 function latOn(): boolean {
   try {
@@ -16,10 +16,21 @@ function latOn(): boolean {
   }
 }
 
+function emit(stage: string, obj: Record<string, any>): void {
+  const line = '[LAT] ' + stage + ' ' + JSON.stringify(obj)
+  // eslint-disable-next-line no-console
+  console.log(line)
+  try {
+    const g: any = typeof window !== 'undefined' ? window : globalThis
+    if (!g.__latBuf) g.__latBuf = []
+    g.__latBuf.push(line)
+    if (g.__latBuf.length > 5000) g.__latBuf.shift()
+  } catch (e) {}
+}
+
 export function latLog(stage: string, data: Record<string, any> = {}): void {
   if (!latOn()) return
-  // eslint-disable-next-line no-console
-  console.log('[LAT]', stage, JSON.stringify({ t: Date.now(), ...data }))
+  emit(stage, { t: Date.now(), ...data })
 }
 
 const _marks = new Map<string, number>()
@@ -36,8 +47,7 @@ export function latMeasure(stage: string, key: string, extra: Record<string, any
   const start = _marks.get(key)
   if (start === undefined) return
   _marks.delete(key)
-  // eslint-disable-next-line no-console
-  console.log('[LAT]', stage, JSON.stringify({ t: Date.now(), ms: Date.now() - start, ...extra }))
+  emit(stage, { t: Date.now(), ms: Date.now() - start, ...extra })
 }
 
 // Delete a mark without logging — call on terminal failure paths (timeout/error/invalid) so
