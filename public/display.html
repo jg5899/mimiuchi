@@ -252,8 +252,9 @@
 
         .transcription-segment {
             display: inline;
-            animation: fadeInSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            /* snappy appearance: was 0.4s, dropped to 0.12s so captions show ~immediately */
+            animation: fadeInSlide 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
         @keyframes fadeInSlide {
