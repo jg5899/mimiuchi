@@ -85,7 +85,7 @@ let httpServer: HttpServer | null = null
 let cloudflaredManager: CloudflaredManager | null = null
 
 const window_config: any = {
-  title: 'Main window',
+  title: 'PneumaScribe',
   width: 1000,
   height: 700,
   icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),

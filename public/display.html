@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data:;" />
-    <title>Mimiuchi Display</title>
+    <title>PneumaScribe</title>
     <style>
         * {
             margin: 0;
@@ -333,7 +333,7 @@
 </head>
 <body class="dark">
     <div class="header">
-        <h1>Mimiuchi Display</h1>
+        <h1>PneumaScribe</h1>
         <div class="controls">
             <div class="status">
                 <div class="status-indicator" id="statusIndicator"></div>
@@ -469,8 +469,8 @@
         // Update page title if language is specified
         if (targetLang) {
             const langName = languageNames[targetLang] || langParam;
-            document.title = `Mimiuchi Display - ${langName}`;
-            document.querySelector('.header h1').textContent = `Mimiuchi Display - ${langName}`;
+            document.title = `PneumaScribe - ${langName}`;
+            document.querySelector('.header h1').textContent = `PneumaScribe - ${langName}`;
             console.log('[Display] Configured for language:', langName, '(', targetLang, ')');
         } else {
             console.log('[Display] No language filter - showing all messages');
@@ -494,7 +494,7 @@
                 ws = new WebSocket(wsUrl);
 
                 ws.onopen = () => {
-                    console.log('Connected to Mimiuchi');
+                    console.log('Connected to PneumaScribe');
                     updateStatus(true);
 
                     // Send subscription message if language is specified
@@ -527,7 +527,7 @@
                 };
 
                 ws.onclose = () => {
-                    console.log('Disconnected from Mimiuchi');
+                    console.log('Disconnected from PneumaScribe');
                     updateStatus(false);
                     // Attempt to reconnect
                     if (!reconnectInterval) {
