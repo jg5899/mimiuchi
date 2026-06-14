@@ -47,7 +47,7 @@ Rejected alternatives:
 - Server / IPC / broadcast routing / NLLB translation pipeline — unchanged.
 - Cloud/neural TTS backend.
 
-**New file:** `test/tts_mock_server.js` — a tiny standalone Node `ws` server for dev
+**New file:** `test/tts_mock_server.cjs` — a tiny standalone Node `ws` server for dev
 verification without the mic/Deepgram/OpenAI stack (mirrors the existing
 `test_profanity_filter.js` manual-test convention).
 
@@ -159,10 +159,11 @@ No change upstream of `display.html`.
 
 ## 8. Testing / verification
 
-- **`test/tts_mock_server.js`** (new): a ~30-line Node `ws` server that emits synthetic
+- **`test/tts_mock_server.cjs`** (new): a ~30-line Node `ws` server that emits synthetic
   `{type:'text', data:{translation, targetLang:'ron_Latn', languageName:'Romanian',
-  isFinal:true, time}}` messages on an interval. Open `display.html?lang=ro&port=<mock>`
-  against it → tap Speak → confirm Romanian audio — **no mic/translation needed**.
+  isFinal:true, time}}` messages on an interval. Run `node test/tts_mock_server.cjs 8090`,
+  open `http://localhost:8090/?lang=ro` → tap Speak → confirm Romanian audio — **no
+  mic/translation needed**. (`.cjs` because the repo is `"type":"module"`.)
 - **Static check**: `node --check` the inline script extracted from `display.html`, and a
   headless smoke (Playwright) to confirm no JS errors and that the speak path is invoked
   (assert `SpeechSynthesisUtterance` constructed) using a stubbed `speechSynthesis`.
@@ -178,8 +179,43 @@ No change upstream of `display.html`.
 
 - **Edit:** `public/display.html` — all feature code (controls, map, voice logic, queue,
   robustness).
-- **New:** `test/tts_mock_server.js` — dev verification only.
+- **New:** `test/tts_mock_server.cjs` — dev verification only.
 - **New:** this design doc.
+
+## 9b. Adversarial review hardening (applied 2026-06-14)
+
+A 25-agent adversarial review surfaced real issues; these were fixed in `display.html`:
+
+- **iOS voice population (high):** `getVoices()` is empty on first call and `onvoiceschanged`
+  often never fires on iOS Safari. Added `scheduleVoiceRetries()` (re-enumerate at
+  250/600/1200/2500/5000 ms after enable), re-enumerate in the unlock primer's `onend`, and a
+  `voicesEverPopulated` guard so the "no voice" banner can't flash falsely during async load.
+- **iOS audio re-lock (medium):** `ttsUnlocked` no longer latches forever — it resets on
+  `visibilitychange`→hidden and on `not-allowed`/`interrupted` errors, so the next user gesture
+  re-primes after a call/lock/backgrounding.
+- **Stuck-queue watchdog (medium):** if `onend`/`onerror` is dropped (known engine behavior),
+  a 5 s keepalive watchdog detects `ttsSpeaking && !speaking && !pending` and recovers;
+  `recoverIfStuck()` also runs on return-to-foreground.
+- **Stale-callback races (low):** per-utterance `ttsGeneration` token makes a canceled
+  utterance's late `onend`/`onerror` no-ops (fixes the `'latest'` mode races).
+- **Sync speak() failure (low):** the `catch` now also re-drains so the queue can't stall.
+- **Panel layout (low):** `layoutTtsPanel()` runs after voice/notice changes so a taller panel
+  never hides captions.
+- **Header overflow (low):** `.controls`/`.header` now `flex-wrap`, `h1` `min-width:0`, so the
+  5th (Speak) button doesn't clip off-screen on ~360 px phones.
+
+## 9c. Known limitations (deferred — verified low/nit)
+
+- **Catch-up under sustained speech:** `'cap'` mode (default) can skip a line during fast
+  stretches by design. Switchable via `TTS_MODE` (`latest`/`full`) for live A/B.
+- **Rate/voice change latency:** a change applies to new utterances; up to ~1–3 already-queued
+  lines finish at the old setting.
+- **English-stream repeated identical finals:** STT (no-`?lang=`) broadcasts carry no `time`,
+  so the dedupe key is text-only; a verbatim-repeated English final within the 500-key window
+  may not re-speak (captions still show it). Clean fix is a 1-line `time` add in
+  `speech.ts` — deferred to keep this change display-only.
+- **Zero-voice browsers (e.g. some Android WebViews/in-app browsers):** API present but no
+  voices ever load → notice + silent (graceful, but the feature can't speak there).
 
 ## 10. Open follow-ups (not this work)
 

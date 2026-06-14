@@ -36,6 +36,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
             z-index: 100;
             backdrop-filter: blur(10px);
         }
@@ -53,12 +55,15 @@
         .header h1 {
             font-size: 1.5rem;
             font-weight: 600;
+            min-width: 0;
         }
 
         .controls {
             display: flex;
             gap: 1rem;
             align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .status {
@@ -126,6 +131,53 @@
             background-color: #444444;
             color: #e0e0e0;
         }
+
+        .tts-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 0.6rem 2rem;
+            z-index: 99;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .tts-panel[hidden] { display: none; }
+
+        body.light .tts-panel {
+            background-color: rgba(245, 245, 245, 0.95);
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        body.dark .tts-panel {
+            background-color: rgba(34, 34, 34, 0.95);
+            border-bottom: 1px solid #333333;
+        }
+
+        .tts-field {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .tts-panel select {
+            padding: 0.3rem 0.5rem;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.9rem;
+        }
+
+        .tts-notice {
+            opacity: 0.9;
+            font-style: italic;
+        }
+
+        body.dark .tts-notice { color: #ffcc66; }
+        body.light .tts-notice { color: #b26a00; }
 
         .container {
             max-width: 1200px;
@@ -230,8 +282,25 @@
             </div>
             <button class="font-btn" id="fontDecrease" aria-label="Decrease font size">A-</button>
             <button class="font-btn" id="fontIncrease" aria-label="Increase font size">A+</button>
+            <button class="theme-toggle" id="ttsToggle" aria-label="Toggle spoken audio">🔇 Speak</button>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark theme">Toggle Theme</button>
         </div>
+    </div>
+
+    <div class="tts-panel" id="ttsPanel" hidden>
+        <label class="tts-field">Voice
+            <select id="ttsVoiceSelect"></select>
+        </label>
+        <label class="tts-field">Speed
+            <select id="ttsRateSelect">
+                <option value="0.8">0.8×</option>
+                <option value="0.9">0.9×</option>
+                <option value="1" selected>1.0×</option>
+                <option value="1.1">1.1×</option>
+                <option value="1.2">1.2×</option>
+            </select>
+        </label>
+        <span class="tts-notice" id="ttsNotice" hidden></span>
     </div>
 
     <div class="container">
@@ -294,11 +363,23 @@
             'ron_Latn': 'Romanian'
         };
 
+        // NLLB target-language code -> BCP-47 tag, for matching speechSynthesis voices
+        const NLLB_TO_BCP47 = {
+            'eng_Latn': 'en', 'spa_Latn': 'es', 'ukr_Cyrl': 'uk', 'rus_Cyrl': 'ru',
+            'por_Latn': 'pt', 'fra_Latn': 'fr', 'kor_Hang': 'ko', 'zho_Hans': 'zh-CN',
+            'tgl_Latn': 'fil', 'vie_Latn': 'vi', 'arb_Arab': 'ar', 'hin_Deva': 'hi',
+            'pol_Latn': 'pl', 'ron_Latn': 'ro'
+        };
+
         // Get port and language from query parameters
         const urlParams = new URLSearchParams(window.location.search);
         const port = urlParams.get('port') || window.location.port || '8080';
         const langParam = urlParams.get('lang');
         const targetLang = langParam ? languageMap[langParam.toLowerCase()] : null;
+        // Spoken-audio language for this page. English page (no ?lang=) speaks English.
+        const ttsLang = targetLang ? (NLLB_TO_BCP47[targetLang] || 'en') : 'en';
+        const ttsLangPrefix = ttsLang.split('-')[0].toLowerCase();
+        const ttsLangName = targetLang ? (languageNames[targetLang] || langParam) : 'English';
         // Use window.location to connect to the same host that served this page
         // Detect HTTPS (e.g., Cloudflare tunnel) and use wss:// accordingly
         const isSecure = window.location.protocol === 'https:';
@@ -439,6 +520,9 @@
                 console.log('[Display] Skipping message with no content');
                 return;
             }
+
+            // Speak finalized lines (no-op unless TTS enabled + a matching voice exists)
+            maybeSpeak(log);
 
             // Find or create transcription item
             let existingIndex = -1;
@@ -584,6 +668,275 @@
             transcriptionList.style.fontSize = currentFontSize + 'rem';
             localStorage.setItem('displayFontSize', String(currentFontSize));
         });
+
+        // ===================== Text-to-Speech (per-viewer) =====================
+        const ttsSupported = 'speechSynthesis' in window;
+
+        // Queue policy: 'cap' (default) | 'latest' | 'full'. Switch to A/B live.
+        //   cap    = keep at most TTS_MAX_BACKLOG waiting; drop oldest (stays ~near live)
+        //   latest = cancel() + speak only newest (tightest sync, may cut off)
+        //   full   = unbounded queue (never skips, can drift far behind)
+        const TTS_MODE = 'cap';
+        const TTS_MAX_BACKLOG = 2;
+
+        let ttsEnabled = localStorage.getItem('ttsEnabled') === 'true';
+        let ttsRate = parseFloat(localStorage.getItem('ttsRate') || '1') || 1;
+        let ttsVoiceURI = localStorage.getItem('ttsVoiceURI') || '';
+        let selectedVoice = null;
+        let voices = [];
+        let voicesEverPopulated = false;
+        let ttsUnlocked = false;
+
+        const ttsQueue = [];
+        let ttsSpeaking = false;
+        let ttsGeneration = 0;   // invalidates stale onend/onerror callbacks after cancel()
+        let speakStartedAt = 0;
+        let resumeKeepalive = null;
+        const spokenKeys = new Set();
+
+        const ttsToggle = document.getElementById('ttsToggle');
+        const ttsPanel = document.getElementById('ttsPanel');
+        const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
+        const ttsRateSelect = document.getElementById('ttsRateSelect');
+        const ttsNotice = document.getElementById('ttsNotice');
+
+        function bcp47Prefix(lang) { return (lang || '').toLowerCase().split('-')[0]; }
+        function matchingVoices() { return voices.filter(v => bcp47Prefix(v.lang) === ttsLangPrefix); }
+
+        function autoPickVoice() {
+            const matches = matchingVoices();
+            if (!matches.length) return null;
+            matches.sort((a, b) => (b.localService === true) - (a.localService === true));
+            return matches[0];
+        }
+
+        function loadVoices() {
+            if (!ttsSupported) return;
+            voices = window.speechSynthesis.getVoices() || [];
+            if (voices.length) voicesEverPopulated = true;
+            selectedVoice = null;
+            if (ttsVoiceURI) selectedVoice = voices.find(v => v.voiceURI === ttsVoiceURI) || null;
+            if (!selectedVoice) selectedVoice = autoPickVoice();
+            renderVoiceOptions();
+            updateTtsNotice();
+        }
+
+        // iOS Safari returns an empty voice list until after the first utterance and often never
+        // fires onvoiceschanged — re-enumerate a few times so a real voice isn't missed.
+        function scheduleVoiceRetries() {
+            [250, 600, 1200, 2500, 5000].forEach(ms => setTimeout(() => {
+                if (!voicesEverPopulated || !selectedVoice) loadVoices();
+            }, ms));
+        }
+
+        function renderVoiceOptions() {
+            if (!ttsVoiceSelect) return;
+            ttsVoiceSelect.innerHTML = '';
+            const matches = matchingVoices();
+            const others = voices.filter(v => bcp47Prefix(v.lang) !== ttsLangPrefix);
+            const addGroup = (list, label) => {
+                if (!list.length) return;
+                const group = document.createElement('optgroup');
+                group.label = label;
+                list.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.voiceURI;
+                    opt.textContent = v.name + ' (' + v.lang + ')';
+                    if (selectedVoice && v.voiceURI === selectedVoice.voiceURI) opt.selected = true;
+                    group.appendChild(opt);
+                });
+                ttsVoiceSelect.appendChild(group);
+            };
+            addGroup(matches, ttsLangName + ' voices');
+            addGroup(others, 'Other voices');
+        }
+
+        function updateTtsNotice() {
+            if (!ttsNotice) return;
+            // Only claim "no voice" once voices have actually been observed at least once, so the
+            // async getVoices() population on iOS doesn't flash a false banner.
+            if (ttsEnabled && voicesEverPopulated && !selectedVoice) {
+                ttsNotice.textContent = 'No ' + ttsLangName + ' voice on this device — showing captions only';
+                ttsNotice.hidden = false;
+            } else {
+                ttsNotice.hidden = true;
+            }
+            layoutTtsPanel();
+        }
+
+        function layoutTtsPanel() {
+            if (!ttsPanel) return;
+            const header = document.querySelector('.header');
+            const container = document.querySelector('.container');
+            if (ttsPanel.hidden) {
+                ttsPanel.style.top = '';
+                if (container) container.style.paddingTop = '';
+                return;
+            }
+            const h = header ? header.offsetHeight : 56;
+            ttsPanel.style.top = h + 'px';
+            if (container) container.style.paddingTop = (h + ttsPanel.offsetHeight + 16) + 'px';
+        }
+
+        // ---- speak engine ----
+        function speakKey(log) { return (log.time || '') + '|' + (log.translation || log.transcript || ''); }
+
+        function enqueueSpeak(text) {
+            if (!text) return;
+            if (TTS_MODE === 'latest') {
+                ttsGeneration++;   // invalidate the canceled utterance's late callbacks
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+                ttsQueue.length = 0;
+                ttsSpeaking = false;
+                ttsQueue.push(text);
+            } else {
+                ttsQueue.push(text);
+                if (TTS_MODE === 'cap') { while (ttsQueue.length > TTS_MAX_BACKLOG) ttsQueue.shift(); }
+            }
+            drainSpeak();
+        }
+
+        function drainSpeak() {
+            if (!ttsSupported || ttsSpeaking) return;
+            const text = ttsQueue.shift();
+            if (text === undefined) return;
+            const u = new SpeechSynthesisUtterance(text);
+            if (selectedVoice) u.voice = selectedVoice;
+            u.lang = (selectedVoice && selectedVoice.lang) || ttsLang;
+            u.rate = ttsRate;
+            const gen = ++ttsGeneration;
+            const advance = () => {
+                if (gen !== ttsGeneration) return;   // stale callback from a canceled utterance
+                ttsSpeaking = false;
+                stopKeepalive();
+                drainSpeak();
+            };
+            u.onend = advance;
+            u.onerror = (ev) => {
+                if (ev && (ev.error === 'not-allowed' || ev.error === 'interrupted')) ttsUnlocked = false;
+                advance();
+            };
+            ttsSpeaking = true;
+            speakStartedAt = Date.now();
+            startKeepalive();
+            try { window.speechSynthesis.speak(u); }
+            catch (e) { ttsSpeaking = false; stopKeepalive(); drainSpeak(); }
+        }
+
+        function startKeepalive() {
+            if (resumeKeepalive) return;
+            resumeKeepalive = setInterval(() => {
+                try {
+                    if (window.speechSynthesis.speaking) {
+                        window.speechSynthesis.resume();   // nudge past the Chromium auto-pause
+                    } else if (ttsSpeaking && !window.speechSynthesis.pending && (Date.now() - speakStartedAt) > 2000) {
+                        // Watchdog: engine isn't speaking but onend/onerror never fired -> recover.
+                        ttsSpeaking = false;
+                        stopKeepalive();
+                        drainSpeak();
+                    }
+                } catch (e) {}
+            }, 5000);
+        }
+        function stopKeepalive() { if (resumeKeepalive) { clearInterval(resumeKeepalive); resumeKeepalive = null; } }
+
+        // Called from updateTranscription for every line; speaks finals once.
+        function maybeSpeak(log) {
+            if (!ttsSupported || !ttsEnabled || !selectedVoice) return;
+            if (log.isFinal !== true) return;
+            const key = speakKey(log);
+            if (spokenKeys.has(key)) return;
+            spokenKeys.add(key);
+            if (spokenKeys.size > 500) {
+                const it = spokenKeys.values();
+                for (let i = 0; i < 100; i++) { const n = it.next(); if (n.done) break; spokenKeys.delete(n.value); }
+            }
+            enqueueSpeak(log.translation || log.transcript);
+        }
+
+        function recoverIfStuck() {
+            if (ttsSpeaking && ttsSupported && !window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+                ttsSpeaking = false;
+                stopKeepalive();
+                drainSpeak();
+            }
+        }
+
+        // ---- enable / iOS unlock ----
+        function primeUnlock() {
+            if (ttsUnlocked || !ttsSupported) return;
+            ttsUnlocked = true;
+            try {
+                const primer = new SpeechSynthesisUtterance(' ');
+                primer.volume = 0;
+                primer.onend = () => { loadVoices(); };   // iOS often populates voices only after first speak
+                window.speechSynthesis.resume();
+                window.speechSynthesis.speak(primer);
+            } catch (e) {}
+        }
+
+        function setTtsEnabled(on) {
+            ttsEnabled = on;
+            localStorage.setItem('ttsEnabled', on ? 'true' : 'false');
+            if (ttsToggle) ttsToggle.textContent = on ? '🔊 Speak' : '🔇 Speak';
+            if (ttsPanel) ttsPanel.hidden = !on;
+            if (on) {
+                loadVoices();
+                scheduleVoiceRetries();
+                primeUnlock();
+            } else {
+                ttsGeneration++;
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+                ttsQueue.length = 0;
+                ttsSpeaking = false;
+                stopKeepalive();
+            }
+            updateTtsNotice();
+            layoutTtsPanel();
+        }
+
+        if (!ttsSupported) {
+            if (ttsToggle) ttsToggle.hidden = true;
+        } else {
+            ttsToggle.textContent = ttsEnabled ? '🔊 Speak' : '🔇 Speak';
+            if (ttsPanel) ttsPanel.hidden = !ttsEnabled;
+
+            ttsToggle.addEventListener('click', () => setTtsEnabled(!ttsEnabled));
+
+            if (ttsRateSelect) {
+                ttsRateSelect.value = String(ttsRate);
+                ttsRateSelect.addEventListener('change', () => {
+                    ttsRate = parseFloat(ttsRateSelect.value) || 1;
+                    localStorage.setItem('ttsRate', String(ttsRate));
+                });
+            }
+            if (ttsVoiceSelect) {
+                ttsVoiceSelect.addEventListener('change', () => {
+                    ttsVoiceURI = ttsVoiceSelect.value;
+                    localStorage.setItem('ttsVoiceURI', ttsVoiceURI);
+                    selectedVoice = voices.find(v => v.voiceURI === ttsVoiceURI) || null;
+                    updateTtsNotice();
+                });
+            }
+
+            loadVoices();
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                window.speechSynthesis.onvoiceschanged = loadVoices;
+            }
+            window.addEventListener('resize', layoutTtsPanel);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    ttsUnlocked = false;   // iOS re-locks audio when backgrounded; re-prime on next gesture
+                } else if (ttsEnabled) {
+                    try { window.speechSynthesis.resume(); } catch (e) {}
+                    recoverIfStuck();
+                }
+            });
+            // If TTS was left enabled in a previous session, unlock on the first user gesture.
+            ['click', 'touchend', 'keydown'].forEach(evt => document.addEventListener(evt, () => { if (ttsEnabled) primeUnlock(); }));
+            if (ttsEnabled) { scheduleVoiceRetries(); layoutTtsPanel(); }
+        }
+        // =================== end Text-to-Speech ===================
 
         // Initialize connection
         connect();
