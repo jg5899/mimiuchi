@@ -6,6 +6,7 @@ import { useLogsStore } from '@/stores/logs'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useTranslationStore } from '@/stores/translation'
 import { useConnectionsStore } from '@/stores/connections'
+import { useHttpServerStore } from '@/stores/httpserver'
 import { useWordReplaceStore } from '@/stores/word_replace'
 import { useSpeakerProfilesStore } from '@/stores/speaker_profiles'
 import { useMultiTranslationStore } from '@/stores/multi_translation'
@@ -17,6 +18,10 @@ import webhook from '@/helpers/webhook'
 
 import { filterProfanity } from '@/helpers/profanity_filter'
 import { latPhraseInterim, latPhraseFinal } from '@/helpers/lat'
+
+// Throttle timestamp for opt-in interim-caption broadcasts (limits WebSocket churn).
+// Module-scoped because there is a single active mic at a time.
+let _lastInterimBroadcast = 0
 
 export interface ListItem {
   title: string
@@ -199,6 +204,21 @@ export const useSpeechStore = defineStore('speech', () => {
         latPhraseInterim() // mark first interim of the phrase (finalization-hold timer)
         // Interim result: update via debounced setter (prevents rapid flickering)
         logsStore.setInterim(transcript)
+
+        // Opt-in (default off): broadcast draft English captions so viewers see text within
+        // ~150ms instead of waiting for the whole sentence to finalize. No targetLang, so
+        // httpserver routes it only to English/"all" display clients (translated viewers still
+        // get their line on the final). Throttled to limit WebSocket churn; the matching final
+        // (isFinal:true) broadcast finalizes the interim on the display.
+        const httpServerStore = useHttpServerStore()
+        if (httpServerStore.interim_captions && defaultStore.broadcasting && is_electron() && transcript?.trim()) {
+          const now = Date.now()
+          if (now - _lastInterimBroadcast >= 150) {
+            _lastInterimBroadcast = now
+            const payload = `{"type": "text", "data": ${JSON.stringify({ transcript, isFinal: false })}}`
+            window.ipcRenderer.send('httpserver-broadcast', payload)
+          }
+        }
         return
       }
 
