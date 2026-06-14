@@ -1,6 +1,7 @@
 import { useMultiTranslationStore } from '@/stores/multi_translation'
 import { useTranslationStore } from '@/stores/translation'
 import is_electron from '@/helpers/is_electron'
+import { latMark, latMeasure, latDiscard, latLog } from '@/helpers/lat'
 
 declare const window: any
 
@@ -144,6 +145,7 @@ class TranslationQueue {
     if (is_electron()) {
       // Send translation request to Electron worker with rate limiting
       this.log('Sending to Electron worker via IPC')
+      latMark('tr:' + taskId)
       window.ipcRenderer.send('transformers-translate-multi', {
         text,
         context: context || '',
@@ -158,6 +160,8 @@ class TranslationQueue {
           console.error(`[TranslationQueue] Translation timeout for ${tgtLang} (index: ${logIndex})`)
           this.activeTaskIds.delete(taskId)
           this.activeTasks--
+          latDiscard('tr:' + taskId)
+          latLog('translate_timeout', { lang: tgtLang })
           // Store error message so user knows translation failed
           if (this.multiTranslationStore) {
             this.multiTranslationStore.updateTranslation(logIndex, tgtLang, '[Translation Timeout]')
@@ -210,11 +214,14 @@ class TranslationQueue {
       // Validate translation output structure
       if (!data.output || !Array.isArray(data.output) || data.output.length === 0 || !data.output[0]?.translation_text) {
         console.error('[TranslationQueue] Translation complete with invalid output:', data.output)
+        latDiscard('tr:' + taskId)
+        latLog('translate_invalid', { lang: data.tgt_lang })
         this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, '[Translation Error]')
         return
       }
       const translation = data.output[0].translation_text
       this.log(`Updating translation for ${data.tgt_lang}:`, translation.substring(0, 50))
+      latMeasure('translate_done', 'tr:' + taskId, { lang: data.tgt_lang })
       this.multiTranslationStore.updateTranslation(data.index, data.tgt_lang, translation)
 
       // CRITICAL: Broadcast the translation to HTTP server display clients
@@ -244,6 +251,9 @@ class TranslationQueue {
         }
       }
     }
+    // Clean up any mark not consumed by latMeasure (status==='error' / non-complete paths).
+    // No-op after a successful complete (latMeasure already deleted it) or when off.
+    latDiscard('tr:' + taskId)
   }
 
   clearContextHistory() {

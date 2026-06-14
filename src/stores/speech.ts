@@ -16,6 +16,7 @@ import { Deepgram } from '@/modules/speech'
 import webhook from '@/helpers/webhook'
 
 import { filterProfanity } from '@/helpers/profanity_filter'
+import { latPhraseInterim, latPhraseFinal } from '@/helpers/lat'
 
 export interface ListItem {
   title: string
@@ -195,10 +196,16 @@ export const useSpeechStore = defineStore('speech', () => {
       const logsStore = useLogsStore()
 
       if (!isFinal) {
+        latPhraseInterim() // mark first interim of the phrase (finalization-hold timer)
         // Interim result: update via debounced setter (prevents rapid flickering)
         logsStore.setInterim(transcript)
         return
       }
+
+      // Finalization-hold measurement: logs stt_hold (interim->final) or stt_no_interim, and
+      // ALWAYS resets the timer — including for the empty/silence finals handled just below —
+      // so sermon pauses can't strand the timer and inflate the next phrase's hold.
+      latPhraseFinal(transcript)
 
       // Final result: only process if there's actual text
       // Don't clear interim for empty finals (silence) - keep showing last text
