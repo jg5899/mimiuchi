@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PneumaScribe — display mockup</title>
+<style>
+  :root {
+    /* "Light in the dark" — deep charcoal-indigo + warm gold/amber flame accent */
+    --bg: #14161b;
+    --surface: rgba(22, 25, 32, 0.92);
+    --border: #2a2f3a;
+    --text: #eceff4;
+    --text-dim: #98a2b3;
+    --interim: #aab2c0;
+    --accent: #f2b441;       /* flame gold */
+    --accent-2: #e8833a;     /* ember */
+    --live: #f2b441;
+    --chip-bg: #20242d;
+    --chip-text: #d6dbe4;
+  }
+  body.light {
+    --bg: #faf7f2;
+    --surface: rgba(255, 253, 250, 0.94);
+    --border: #e7e0d4;
+    --text: #20242c;
+    --text-dim: #6b7280;
+    --interim: #8a7f6c;
+    --accent: #c8881b;
+    --accent-2: #b8631a;
+    --live: #c8881b;
+    --chip-bg: #f0ebe1;
+    --chip-text: #3a3f48;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: background-color .35s, color .35s;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    position: fixed; inset: 0 0 auto 0;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: .7rem 1.25rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .brand { display: flex; align-items: center; gap: .55rem; margin-right: auto; }
+  .brand .glyph { width: 26px; height: 26px; flex: none; }
+  .brand .name { font-size: 1.15rem; font-weight: 600; letter-spacing: .2px; }
+  .brand .name b { color: var(--accent); font-weight: 700; }
+
+  .live { display: flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; }
+  .live .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 rgba(242,180,65,.6); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(242,180,65,.5)} 70%{box-shadow:0 0 0 7px rgba(242,180,65,0)} 100%{box-shadow:0 0 0 0 rgba(242,180,65,0)} }
+
+  .ctl { display: flex; align-items: center; gap: .5rem; }
+  select.pill, button.pill {
+    appearance: none; border: 1px solid var(--border); background: var(--chip-bg); color: var(--chip-text);
+    padding: .4rem .7rem; border-radius: 999px; font-size: .85rem; cursor: pointer; transition: .2s;
+  }
+  button.pill:hover, select.pill:hover { border-color: var(--accent); color: var(--text); }
+  button.pill.icon { padding: .4rem .6rem; font-weight: 700; }
+  button.speak.on { background: var(--accent); color: #1a1206; border-color: var(--accent); font-weight: 600; }
+
+  /* ---------- TTS sub-panel ---------- */
+  .tts-panel {
+    position: fixed; left: 0; right: 0; z-index: 99;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: .55rem 1.25rem; font-size: .85rem;
+    background: var(--surface); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px);
+    color: var(--text-dim);
+  }
+  .tts-panel label { display: flex; align-items: center; gap: .4rem; }
+  .tts-panel select { appearance: none; border: 1px solid var(--border); background: var(--chip-bg); color: var(--chip-text); padding: .25rem .5rem; border-radius: 6px; }
+
+  /* ---------- Captions ---------- */
+  .stage { max-width: 52rem; margin: 0 auto; padding: 8.5rem 1.5rem 6rem; }
+  .captions { font-size: 2rem; line-height: 1.7; }
+  .seg { transition: opacity .25s ease; }
+  .seg.final { opacity: 1; }
+  .seg.interim { color: var(--interim); font-style: italic; opacity: .8; }
+  .seg.interim::after { content: '▍'; color: var(--accent); animation: blink 1s steps(1) infinite; margin-left: 1px; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- Live pill (scroll-back) ---------- */
+  .jump { position: fixed; left: 50%; bottom: 1.4rem; transform: translateX(-50%); display: none;
+    background: var(--accent); color: #1a1206; border: none; padding: .5rem 1rem; border-radius: 999px;
+    font-weight: 600; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+
+  /* ---------- First-load hint ---------- */
+  .hint {
+    position: fixed; left: 50%; bottom: 1.4rem; transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: .7rem 1rem; border-radius: 12px; font-size: .9rem; display: flex; align-items: center; gap: .75rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,.35); z-index: 120;
+  }
+  .hint b { color: var(--accent); }
+  .hint button { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.1rem; }
+
+  @media (max-width: 640px) {
+    .captions { font-size: 1.5rem; }
+    .brand .name { font-size: 1rem; }
+    .stage { padding-top: 9.5rem; }
+  }
+</style>
+</head>
+<body class="dark">
+  <div class="header">
+    <div class="brand">
+      <svg class="glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2c2.5 3 1 5-0.5 6.5C10 10 9.5 11.8 11 13c.7-1 1.6-1.4 1.6-1.4s.9 2.2-.6 4c2.8-.6 4.5-3 4.5-5.7C16.5 6 13.8 4.2 12 2z" fill="url(#f)"/>
+        <path d="M9.3 9.8C8 11 7.3 12.6 7.5 14.2 7.8 16.9 10 19 12 19s4.5-1.6 4.8-4.3c-1.2 1.7-2.9 2.3-2.9 2.3s1-1.7.2-3.3c-.5 1-1.3 1.3-1.3 1.3s-1-1.6.2-3.4c-1.6.6-2.9 1.5-3.7 2z" fill="url(#e)" opacity=".9"/>
+        <defs>
+          <linearGradient id="f" x1="12" y1="2" x2="12" y2="13" gradientUnits="userSpaceOnUse"><stop stop-color="#f7d27a"/><stop offset="1" stop-color="#f2b441"/></linearGradient>
+          <linearGradient id="e" x1="12" y1="9" x2="12" y2="19" gradientUnits="userSpaceOnUse"><stop stop-color="#f2b441"/><stop offset="1" stop-color="#e8833a"/></linearGradient>
+        </defs>
+      </svg>
+      <span class="name">Pneuma<b>Scribe</b></span>
+    </div>
+
+    <div class="live"><span class="dot"></span> Live</div>
+
+    <div class="ctl">
+      <select class="pill" id="lang" title="Your language" onchange="setLang(this.value)">
+        <option value="en">English</option>
+        <option value="ro" selected>Română (Romanian)</option>
+        <option value="es">Español</option>
+        <option value="uk">Українська</option>
+        <option value="ru">Русский</option>
+      </select>
+      <select class="pill" id="mode" title="Text size" onchange="setMode(this.value)">
+        <option value="phone">Phone</option>
+        <option value="projector">Projector</option>
+      </select>
+      <button class="pill speak" id="speak" onclick="toggleSpeak()">🔇 Speak</button>
+      <button class="pill icon" onclick="toggleTheme()" title="Theme">◐</button>
+    </div>
+  </div>
+
+  <!-- TTS sub-panel (shown only when Speak is on) -->
+  <div class="tts-panel" id="ttsPanel" style="display:none; top:56px;">
+    <label>Voice
+      <select><option>Ioana (ro-RO)</option><option>Other voices…</option></select>
+    </label>
+    <label>Speed
+      <select><option>0.9×</option><option selected>1.0×</option><option>1.1×</option></select>
+    </label>
+    <span style="opacity:.0" id="ttsNotice">No Romanian voice on this device — showing captions only</span>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="captions" id="captions">
+      <span class="seg final">Pacea fie cu voi. </span>
+      <span class="seg final">Astăzi vom vorbi despre dragoste și har. </span>
+      <span class="seg final">Domnul este păstorul meu, nu voi duce lipsă de nimic. </span>
+      <span class="seg interim">Să ne rugăm împreună în numele</span>
+    </div>
+  </div>
+
+  <button class="jump" id="jump" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">↓ Live</button>
+
+  <div class="hint" id="hint">
+    <span>👋 <b>Pick your language</b> above · tap <b>🔊 Speak</b> to hear it</span>
+    <button onclick="document.getElementById('hint').remove()">×</button>
+  </div>
+
+<script>
+  function toggleTheme(){ document.body.classList.toggle('light'); document.body.classList.toggle('dark'); }
+  let speakOn = false;
+  function toggleSpeak(){
+    speakOn = !speakOn;
+    const b = document.getElementById('speak');
+    b.textContent = (speakOn ? '🔊' : '🔇') + ' Speak';
+    b.classList.toggle('on', speakOn);
+    document.getElementById('ttsPanel').style.display = speakOn ? 'flex' : 'none';
+    document.getElementById('stage').style.paddingTop = speakOn ? '12rem' : '';
+  }
+  function setLang(v){ /* in real build: re-subscribe over WS + clear + retune TTS voice */ }
+  function setMode(v){
+    document.getElementById('captions').style.fontSize = v === 'projector' ? '3.2rem' : '';
+    document.getElementById('captions').style.lineHeight = v === 'projector' ? '1.6' : '';
+  }
+  // demo: a trailing interim that "finalizes" then a new one starts
+  setTimeout(() => {
+    const c = document.getElementById('captions');
+    const interim = c.querySelector('.interim');
+    if (interim){ interim.textContent = 'Să ne rugăm împreună în numele lui Isus. '; interim.className = 'seg final'; }
+    const s = document.createElement('span'); s.className = 'seg interim'; s.textContent = 'Mulțumim pentru'; c.appendChild(s);
+  }, 2600);
+</script>
+</body>
+</html>
