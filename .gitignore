@@ -34,3 +34,10 @@ manager/node_modules/
 
 # Superpowers
 .superpowers/
+
+# local tool caches / loose artifacts (not part of the app)
+.serena/
+/qr-*.png
+/docs/admin-dashboard-*.png
+/docs/admin-mic-active.png
+/docs/display-client.png
