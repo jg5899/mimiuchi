@@ -197,6 +197,9 @@ function terminateTransformersWorker() {
 app.whenReady().then(() => {
   createWindow()
 
+  // Launch PneumaScribe automatically at login so the captioning system is ready after a restart.
+  try { app.setLoginItemSettings({ openAtLogin: true }) } catch (e) { /* non-fatal */ }
+
   // Connect to manager service if available
   initManagerClient({
     getHttpServer: () => httpServer,

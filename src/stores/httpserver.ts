@@ -14,6 +14,9 @@ export const useHttpServerStore = defineStore('httpserver', () => {
   const tunnelMode = ref<'quick' | 'named'>('named')
   const tunnelToken = ref('')
   const tunnelHostname = ref('')
+  // Remember whether the tunnel was on, so it auto-starts on the next app boot
+  // (no manual toggle needed after a relaunch).
+  const tunnel_enabled = ref(false)
 
   function reset() {
     enabled.value = true
@@ -22,6 +25,7 @@ export const useHttpServerStore = defineStore('httpserver', () => {
     tunnelMode.value = 'named'
     tunnelToken.value = ''
     tunnelHostname.value = ''
+    tunnel_enabled.value = false
   }
 
   return {
@@ -31,6 +35,7 @@ export const useHttpServerStore = defineStore('httpserver', () => {
     tunnelMode,
     tunnelToken,
     tunnelHostname,
+    tunnel_enabled,
     reset,
   }
 })

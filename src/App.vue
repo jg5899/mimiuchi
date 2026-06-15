@@ -142,6 +142,18 @@ if (is_electron() && httpServerStore.enabled) {
   window.ipcRenderer.invoke('httpserver-start', { port: httpServerStore.port })
     .then(() => {
       console.log('[App.vue] HTTP server auto-started successfully on port', httpServerStore.port)
+      // Auto-start the Cloudflare tunnel too if it was left enabled, so the public URL is
+      // back up after a relaunch without a manual toggle. (Starts after the origin is up.)
+      if (httpServerStore.tunnel_enabled && httpServerStore.tunnelMode === 'named' && httpServerStore.tunnelToken) {
+        const config: any = { httpPort: httpServerStore.port, token: httpServerStore.tunnelToken }
+        if (httpServerStore.tunnelHostname) {
+          config.customHostname = httpServerStore.tunnelHostname.startsWith('http')
+            ? httpServerStore.tunnelHostname
+            : `https://${httpServerStore.tunnelHostname}`
+        }
+        console.log('[App.vue] Auto-starting Cloudflare tunnel (was enabled)')
+        window.ipcRenderer.invoke('cloudflare-tunnel-start', config).catch(() => {})
+      }
     })
     .catch((error: Error) => {
       console.error('[App.vue] Failed to auto-start HTTP server:', error)
@@ -170,6 +182,7 @@ onMounted(() => {
       }
     }
     if (cmd.action === 'toggle_tunnel') {
+      httpServerStore.tunnel_enabled = !!cmd.enabled // remember so it auto-starts on next boot
       if (cmd.enabled) {
         const config: any = { httpPort: httpServerStore.port }
         if (httpServerStore.tunnelMode === 'named' && httpServerStore.tunnelToken) {
