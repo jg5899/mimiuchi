@@ -88,7 +88,8 @@ const window_config: any = {
   title: 'PneumaScribe',
   width: 1000,
   height: 700,
-  icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
+  backgroundColor: '#17171c', // matches the index.html splash so there's no flash before it paints
+  icon: path.join(process.env.VITE_PUBLIC, 'trinity-logo.png'),
   frame: false,
   titleBarStyle: 'hidden',
   trafficLightPosition: { x: 10, y: 10 },

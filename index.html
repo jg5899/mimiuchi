@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="/trinity-logo.png" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.openai.com https://api.deepgram.com wss://api.deepgram.com ws: wss:; img-src 'self' data:; media-src 'self' data:;" />
@@ -14,11 +14,80 @@
     <meta property="og:type" content="website" />
     <meta name="keywords" content="mimiuchi, naeruru, naeris, speech-to-text">
     <meta property="og:url" content="https://mimiuchi.com/" />
-    <meta property="og:image" content="https://mimiuchi.com/logo-256x256.png" />
+    <meta property="og:image" content="https://caption.gensandbox.com/trinity-logo.png" />
     <meta property="og:description" content="Free, real-time captioning using your voice." />
+
+    <!-- Startup splash: paints instantly (before the JS bundle loads), removed by main.ts on mount -->
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: #17171c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 22px;
+        transition: opacity 0.45s ease;
+        -webkit-app-region: drag; /* keep the frameless window draggable while splash is up */
+      }
+      #splash.splash-hide { opacity: 0; pointer-events: none; }
+      #splash .splash-mark {
+        width: 76px;
+        height: 76px;
+        object-fit: contain;
+        opacity: 0;
+        transform: scale(0.82);
+        animation: splash-markin 0.5s cubic-bezier(.2,.7,.3,1) forwards;
+      }
+      #splash .splash-word {
+        position: relative;
+        display: inline-block;
+        font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        color: #f3ede0;
+        white-space: nowrap;
+      }
+      #splash .splash-text {
+        clip-path: inset(0 100% 0 0);
+        animation: splash-write 1.4s ease-in-out 0.45s forwards;
+      }
+      #splash .splash-pen {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        font-size: 26px;
+        opacity: 0;
+        transform: translate(-46%, -64%) rotate(-6deg);
+        animation: splash-pen 1.4s ease-in-out 0.45s forwards;
+        pointer-events: none;
+      }
+      @keyframes splash-markin { to { opacity: 1; transform: scale(1); } }
+      @keyframes splash-write { to { clip-path: inset(0 0 0 0); } }
+      @keyframes splash-pen {
+        0%   { left: 0%;   opacity: 1; }
+        92%  { opacity: 1; }
+        100% { left: 100%; opacity: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash .splash-mark { animation: none; opacity: 1; transform: none; }
+        #splash .splash-text { animation: none; clip-path: none; }
+        #splash .splash-pen { display: none; }
+      }
+    </style>
 </head>
 
 <body>
+    <div id="splash">
+      <img class="splash-mark" src="/trinity-mark.png" alt="Trinity Community Church" />
+      <div class="splash-word">
+        <span class="splash-text">PneumaScribe</span>
+        <span class="splash-pen">🖋</span>
+      </div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
 </body>

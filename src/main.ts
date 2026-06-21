@@ -65,3 +65,20 @@ app
   .use(i18n)
   .provide('app_name', app_name)
   .mount('#app')
+
+// Fade out the startup splash (defined in index.html) once the app has mounted.
+// Honor a minimum on-screen time so a fast boot still shows the pen-writing animation,
+// with a hard fallback so the splash can never get stuck.
+{
+  const SPLASH_MIN_MS = 2000
+  const hideSplash = () => {
+    const el = document.getElementById('splash')
+    if (!el) return
+    el.classList.add('splash-hide')
+    setTimeout(() => el.remove(), 500)
+  }
+  // performance.now() ≈ ms the splash has already been visible (since page load).
+  const elapsed = performance.now()
+  setTimeout(hideSplash, Math.max(0, SPLASH_MIN_MS - elapsed))
+  setTimeout(hideSplash, 6000) // hard fallback
+}

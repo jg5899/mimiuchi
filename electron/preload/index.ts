@@ -159,11 +159,12 @@ function useLoading() {
 
 // ----------------------------------------------------------------------
 
-const { appendLoading, removeLoading } = useLoading()
-domReady().then(appendLoading)
+// The old plum "square-spin" loading overlay is intentionally NOT shown anymore.
+// The branded startup splash in index.html (#splash, removed by main.ts on mount)
+// is now the single loading screen. We keep removeLoading wired as a harmless no-op
+// in case anything ever posts the message.
+const { removeLoading } = useLoading()
 
 window.onmessage = (ev) => {
   ev.data.payload === 'removeLoading' && removeLoading()
 }
-
-setTimeout(removeLoading, 4999)

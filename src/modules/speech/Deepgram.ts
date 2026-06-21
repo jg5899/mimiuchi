@@ -2,9 +2,9 @@ declare const window: any
 
 // Configuration constants
 const DEEPGRAM_CONFIG = {
-  ENDPOINTING_MS: 300,         // 300ms silence = finalize phrase (allows interims to flow)
+  ENDPOINTING_MS: 500,         // 500ms silence = finalize phrase (happy medium: snappier than 800 but less mid-sentence chopping than the old 300)
   BUFFER_SIZE: 2048,           // Smaller buffer = lower latency audio capture
-  SAMPLE_RATE: 16000,         // Audio sample rate in Hz
+  SAMPLE_RATE: 48000,         // Audio sample rate in Hz (wideband — nova-3 accuracy beats the old 16k telephone band)
   MIN_BACKOFF_MS: 1000,       // Minimum reconnection delay
   MAX_BACKOFF_MS: 16000,      // Maximum reconnection delay
   MAX_RECONNECT_ATTEMPTS: 5,  // Maximum WebSocket reconnection attempts
@@ -86,7 +86,7 @@ class Deepgram {
         this.stream_ref = await navigator.mediaDevices.getUserMedia({
           audio: {
             channelCount: 1,
-            sampleRate: 16000,
+            sampleRate: DEEPGRAM_CONFIG.SAMPLE_RATE,
           },
         })
       }
@@ -113,13 +113,11 @@ class Deepgram {
       model: 'nova-3',
       language: this.language,
       interim_results: 'true',
-      punctuate: 'true',
+      smart_format: 'true', // Deepgram-recommended formatting (punctuation, numbers, dates) — replaces raw numerals
       endpointing: String(DEEPGRAM_CONFIG.ENDPOINTING_MS),
-      utterance_end_ms: '1000', // Force-finalize after 1s silence as safety net
+      utterance_end_ms: '1200', // Force-finalize after 1.2s silence as safety net (matches the 500ms endpointing middle ground)
       encoding: 'linear16',
       sample_rate: String(DEEPGRAM_CONFIG.SAMPLE_RATE),
-      // Accuracy improvements
-      numerals: 'true', // Better number formatting (e.g., "John 3:16")
       profanity_filter: 'false', // We handle this ourselves with church context
     })
 

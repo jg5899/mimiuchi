@@ -3,7 +3,7 @@
 
     <div v-if="platform.includes('mac')" :style="{ 'min-width': '75px' }"></div>
 
-    <v-icon class="me-2" icon="mdi-weather-night" />
+    <img class="me-2 systembar-logo" src="/trinity-mark.png" alt="Trinity Community Church" />
 
     <span class="font-weight-medium">{{ APP_NAME }}</span>
     
@@ -83,5 +83,13 @@ onMounted(() => {
 
 .systembar-button {
   -webkit-app-region: no-drag;
+}
+
+.systembar-logo {
+  height: 20px;
+  width: 20px;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
 }
 </style>

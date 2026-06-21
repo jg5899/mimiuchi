@@ -41,6 +41,6 @@
       "AppImage"
     ],
     "artifactName": "${productName}-Linux-${version}.${ext}",
-    "icon": "public/logo-256x256.png"
+    "icon": "public/trinity-logo.png"
   }
 }

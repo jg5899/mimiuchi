@@ -13,7 +13,7 @@
         <v-avatar
           color="transparent"
         >
-          <v-img :src="logo" />
+          <v-img src="/trinity-logo.png" alt="Trinity Community Church" />
         </v-avatar>
       </template>
       <v-card-text class="text-subtitle-1 py-2">
@@ -66,7 +66,6 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
-import logo from '@/assets/logo-256x256.png'
 
 const props = defineProps<{ overlay: boolean, page: number }>()
 const { t } = useI18n()
